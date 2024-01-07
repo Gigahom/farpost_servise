@@ -16,3 +16,4 @@ class RequstsApi(Enum):
 
     Login = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/login"
     Items = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_items"
+    Updata = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_items_user"

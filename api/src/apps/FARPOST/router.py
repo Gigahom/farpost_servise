@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Form, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from lxml import html
 import requests
@@ -7,23 +8,34 @@ from uuid import uuid4
 import asyncio
 
 from src.settings.const import ConstHeader, ConstUrl
-from .schemas import ResponseLoginSchema, ItemSchema, UserSchema, BaseModel
-from src.apps.models import User, Base
+from .schemas import ResponseLoginSchema, ItemSchema, UserSchema, AbsSchema
+from src.apps.models import User
 from src.settings.db import get_async_session
+from src.apps.FARPOST.utilities import *
 
 
 router = APIRouter(prefix="/farpost", tags=["farpost"])
 
-async def async_add_data(class_model:Base, data:BaseModel):
-    async with get_async_session() as session:
-        await class_model.save_from_schema(schema=data, session=session)
 
-@router.post("/get_items")
-def get_items(response: ResponseLoginSchema) -> List[ItemSchema]:
+@router.get("/get_items")
+async def get_items(user_login: str, session: AsyncSession = Depends(get_async_session)) -> List[AbsSchema]:
     """
-    Запрос на получение карточек в профиле
+    Запрос на обьявлений завязаных на пользователя из базы данных
     """
-    
+
+    async with session as session_async:
+        ads = await get_ads_by_user_login(user_login, session_async)
+    return [ad.to_read_model() for ad in ads]
+
+
+@router.post("/update_items_user")
+async def update_items_user(
+    user_login: str, response: ResponseLoginSchema, async_session: AsyncSession = Depends(get_async_session)
+) -> List[AbsSchema]:
+    """
+    Запрос на обновление обьявлений завязаных на пользователе
+    """
+
     session: requests.session = requests.Session()
 
     session.headers.update(response.headers.dict())
@@ -35,14 +47,22 @@ def get_items(response: ResponseLoginSchema) -> List[ItemSchema]:
         result: requests.models.Response = session.get("https://www.farpost.ru/personal/actual/bulletins")
 
         tree_item: html.HtmlElement = html.fromstring(result.text)
+        async with async_session as session_async:
+            user_id = await get_user_id_by_login(user_login, session_async)
 
-        items_list: list[ItemSchema] = [
-            ItemSchema(
+        if user_id is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        items_list: list[AbsSchema] = [
+            AbsSchema(
                 **{
-                    "id_site": id_.strip(),
-                    "name": name.strip(),
-                    "city": city.strip(),
-                    "attr": attr.strip().replace(attr.split("/")[-1], "").replace("https://www.farpost.ru/", ""),
+                    "abs_id": int(id_.strip()),
+                    "user_id": user_id,
+                    "name_farpost": name.strip(),
+                    "city_english": city.strip(),
+                    "category_attribute": attr.strip()
+                    .replace(attr.split("/")[-1], "")
+                    .replace("https://www.farpost.ru/", ""),
                     "categore": attr.strip()
                     .replace(attr.split("/")[-1], "")
                     .replace("https://www.farpost.ru/", "")
@@ -52,7 +72,7 @@ def get_items(response: ResponseLoginSchema) -> List[ItemSchema]:
                     .replace("https://www.farpost.ru/", "")
                     .split("/")[2],
                     "link": attr,
-                    "img": img,
+                    "link_main_img": img,
                 }
             )
             for id_, name, city, attr, img in zip(
@@ -63,6 +83,9 @@ def get_items(response: ResponseLoginSchema) -> List[ItemSchema]:
                 tree_item.xpath("//img/@src"),
             )
         ]
+        for item in items_list:
+            await async_add_data(Abs, item)
+
         return items_list
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -96,9 +119,9 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         "password": f"{password}",
     }
     uuid_user = uuid4()
-    user_data = UserSchema(user_id=uuid_user,login=login,password=password)
-    asyncio.run(async_add_data(User,user_data))
-    
+    user_data = UserSchema(user_id=uuid_user, login=login, password=password)
+    asyncio.run(async_add_data(User, user_data))
+
     response = session.post(ConstUrl.URL_LOGIN.value, data=data)
 
     headers_dict: dict = dict(response.headers)

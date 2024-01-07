@@ -15,17 +15,26 @@ class UserSchema(BaseModel):
 
 
 class AbsSchema(BaseModel):
+    """
+    Схема объявления
+    """
+
     abs_id: int
     user_id: UUID
     link_main_img: str
     link: str
     name_farpost: str
-    farpost_id: str
     city_english: str
-    chapter: str
+    categore: str
+    subcategories: str
+    category_attribute: str
 
 
 class AbsActiveSchema(BaseModel):
+    """
+    Схема активного объявления
+    """
+
     abs_active_id: UUID
     abs_id: int
     position: int

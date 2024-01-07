@@ -60,5 +60,5 @@ class Login(ContentAbstract):
         ).json()
 
         self.master.headers_cookies = data
-        
+
         self.master.new_win(ViewData)

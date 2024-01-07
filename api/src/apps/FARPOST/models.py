@@ -86,9 +86,10 @@ class Abs(Base):
             link_main_img=self.link_main_img,
             link=self.link,
             name_farpost=self.name_farpost,
-            farpost_id=self.farpost_id,
             city_english=self.city_english,
-            chapter=self.chapter,
+            categore=self.categore,
+            subcategories=self.subcategories,
+            category_attribute=self.category_attribute,
         )
 
     @classmethod
