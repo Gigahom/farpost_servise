@@ -123,7 +123,7 @@ class AbsActive(Base):
     position: Mapped[int] = mapped_column()
     price_limitation: Mapped[float] = mapped_column(types.Float)
     date_creation: Mapped[datetime] = mapped_column(types.TIMESTAMP)
-    date_closing: Mapped[datetime] = mapped_column(types.TIMESTAMP)
+    date_closing: Mapped[datetime] = mapped_column(types.TIMESTAMP, nullable=True)
 
     # Relationships
     abs: Mapped["Abs"] = relationship("Abs", back_populates="abs_actives")

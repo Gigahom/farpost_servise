@@ -1,5 +1,7 @@
 FROM python:3.11
 
+ENV TZ=Asia/Vladivostok
+
 WORKDIR /app
 
 RUN pip install poetry

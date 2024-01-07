@@ -81,18 +81,3 @@ class ResponseLoginSchema(BaseModel):
 
     headers: HeadersSchema
     cookies: CookiesSchema
-
-
-class ItemSchema(BaseModel):
-    """
-    Схема для ответа с items
-    """
-
-    id_site: str
-    name: str
-    city: str
-    attr: str
-    categore: str
-    subcategories: str
-    link: str
-    img: str

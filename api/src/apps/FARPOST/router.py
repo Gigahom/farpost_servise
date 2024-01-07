@@ -4,17 +4,92 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lxml import html
 import requests
 from typing import List
-from uuid import uuid4
+from uuid import uuid4, UUID
 import asyncio
+from datetime import datetime
 
 from src.settings.const import ConstHeader, ConstUrl
-from .schemas import ResponseLoginSchema, ItemSchema, UserSchema, AbsSchema
-from src.apps.models import User
+from .schemas import ResponseLoginSchema, UserSchema, AbsSchema, AbsActiveSchema
+from src.apps.models import User, AbsActive
 from src.settings.db import get_async_session
 from src.apps.FARPOST.utilities import *
 
 
 router = APIRouter(prefix="/farpost", tags=["farpost"])
+
+
+@router.get("/get_abs_active_by_user")
+async def get_abs_active_by_user(user_login: str) -> List[AbsActiveSchema]:
+    """
+    Получает все объявления из таблицы AbsActive по user_login
+    """
+
+    async with get_async_session() as session:
+        result = await session.execute(select(User).filter_by(login=user_login))
+        user = result.scalars().first()
+
+        if user:
+            result = await session.execute(select(AbsActive).join(Abs).filter(Abs.user_id == user.user_id))
+            abs_active_records = result.scalars().all()
+
+            return [record.to_read_model() for record in abs_active_records]
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.get("/creact_abs_active")
+async def creact_abs_active(user_login: str, abs_id: int, position: int, price_limitation: float) -> AbsActiveSchema:
+    """
+    Создание новой записи для отслеживания
+    """
+
+    async with get_async_session() as session:
+        result = await session.execute(select(User).filter_by(login=user_login))
+        user = result.scalars().first()
+
+        if user:
+            result = await session.execute(
+                select(AbsActive).join(Abs).filter(Abs.user_id == user.user_id, AbsActive.date_closing.is_(None))
+            )
+            active_record = result.scalars().first()
+
+            if active_record:
+                raise HTTPException(status_code=418, detail=f"Сейчас есть активная запись {active_record.abs_id}")
+            else:
+                uuid_abs_active = uuid4()
+                new_abs_active = AbsActiveSchema(
+                    abs_active_id=uuid_abs_active,
+                    abs_id=abs_id,
+                    position=position,
+                    price_limitation=price_limitation,
+                    date_creation=datetime.now(),
+                    date_closing=None,
+                )
+                await async_add_data(AbsActive, new_abs_active)
+                return new_abs_active
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.get("/stop_abs_active")
+async def stop_abs_active(abs_active_id: UUID) -> AbsActiveSchema:
+    """
+    Останавливает отслеживание, устанавливая date_closing на текущую дату и время
+    """
+
+    async with get_async_session() as session:
+        result = await session.execute(select(AbsActive).filter_by(abs_active_id=abs_active_id))
+        abs_active_record = result.scalars().first()
+
+        if abs_active_record:
+            abs_active_record.date_closing = datetime.now()
+
+            session.add(abs_active_record)
+            await session.commit()
+
+            return abs_active_record.to_read_model()
+        else:
+            raise HTTPException(status_code=404, detail="AbsActive record not found")
 
 
 @router.get("/get_items")
