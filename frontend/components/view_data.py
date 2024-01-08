@@ -15,45 +15,19 @@ class ViewData(ContentAbstract):
     def __init__(self, page: ft.Page, master: PagesAbstract):
         self.master = master
         self.page = page
-        self.login = self.master.headers_cookies["cookies"].get("login")
 
-        self.tab_all_content = ft.Container(
-            content=ft.Row(
-                [
-                    ft.Column(),
-                    ft.Column(
-                        [
-                            ft.DataTable(
-                                data_row_min_height=150,
-                                data_row_max_height=200,
-                                columns=[
-                                    ft.DataColumn(ft.Text("Название")),
-                                    ft.DataColumn(ft.Text("Город")),
-                                    ft.DataColumn(ft.Text("Категория")),
-                                    ft.DataColumn(ft.Text("Подкатегория")),
-                                    ft.DataColumn(ft.Text("Изображение")),
-                                ],
-                                rows=[
-                                    self.creact_row(i)
-                                    for i in requests.get(
-                                        RequstsApi.Items.value + f"""?user_login={self.login}"""
-                                    ).json()
-                                ],
-                            ),
-                        ],
-                        height=600,
-                        scroll=ft.ScrollMode.ALWAYS,
-                    ),
-                    ft.Column(
-                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data)],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            alignment=ft.alignment.center,
-        )
+        if isinstance(self.master.headers_cookies, dict) and "cookies" in self.master.headers_cookies:
+            cookies = self.master.headers_cookies["cookies"]
+            self.login: str = ""
+            if isinstance(cookies, dict):
+                self.login = cookies.get("login")
+            else:
+                self.login = ""
+                self.out(1)
+        else:
+            self.login = ""
+            self.out(1)
+
         self.tab_settings_content = ft.Container(
             content=ft.Column([ft.ElevatedButton(text="Выйти", on_click=self.out)]),
             alignment=ft.alignment.center,
@@ -65,7 +39,43 @@ class ViewData(ContentAbstract):
                 ft.Tab(icon=ft.icons.SETTINGS, content=self.tab_settings_content),
                 ft.Tab(
                     text="Все",
-                    content=self.tab_all_content,
+                    content=ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Column(),
+                                ft.Column(
+                                    [
+                                        ft.DataTable(
+                                            data_row_min_height=150,
+                                            data_row_max_height=200,
+                                            columns=[
+                                                ft.DataColumn(ft.Text("Название")),
+                                                ft.DataColumn(ft.Text("Город")),
+                                                ft.DataColumn(ft.Text("Категория")),
+                                                ft.DataColumn(ft.Text("Подкатегория")),
+                                                ft.DataColumn(ft.Text("Изображение")),
+                                            ],
+                                            rows=[
+                                                self.creact_row(i)
+                                                for i in requests.get(
+                                                    RequstsApi.Items.value + f"""?user_login={self.login}"""
+                                                ).json()
+                                            ],
+                                        ),
+                                    ],
+                                    height=600,
+                                    scroll=ft.ScrollMode.ALWAYS,
+                                ),
+                                ft.Column(
+                                    [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data)],
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
+                        alignment=ft.alignment.center,
+                    ),
                 ),
                 ft.Tab(
                     text="Активные",
@@ -76,7 +86,7 @@ class ViewData(ContentAbstract):
         )
         self.page.add(self.tab_menu)
 
-    def creact_row(self, data_row: dict) -> None:
+    def creact_row(self, data_row: dict) -> ft.DataRow:
         """
         Создание данных в нутри таблицы
         """
@@ -115,31 +125,43 @@ class ViewData(ContentAbstract):
         Запрос на обновление
         """
 
-        self.tab_all_content = ft.Container(
+        self.tab_menu.tabs[1].content = ft.Container(
             content=ft.Row(
                 [
                     ft.Column(),
-                    ft.DataTable(
-                        data_row_min_height=150,
-                        data_row_max_height=200,
-                        columns=[
-                            ft.DataColumn(ft.Text("Название")),
-                            ft.DataColumn(ft.Text("Город")),
-                            ft.DataColumn(ft.Text("Категория")),
-                            ft.DataColumn(ft.Text("Подкатегория")),
-                            ft.DataColumn(ft.Text("Изображение")),
+                    ft.Column(
+                        [
+                            ft.DataTable(
+                                data_row_min_height=150,
+                                data_row_max_height=200,
+                                columns=[
+                                    ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(ft.Text("Город")),
+                                    ft.DataColumn(ft.Text("Категория")),
+                                    ft.DataColumn(ft.Text("Подкатегория")),
+                                    ft.DataColumn(ft.Text("Изображение")),
+                                ],
+                                rows=[
+                                    self.creact_row(i)
+                                    for i in requests.post(
+                                        RequstsApi.Updata.value + f"""?user_login={self.login}""",
+                                        json=self.master.headers_cookies,
+                                    ).json()
+                                ],
+                            ),
                         ],
-                        rows=[
-                            self.creact_row(i)
-                            for i in requests.post(
-                                RequstsApi.Updata.value + f"""?user_login={self.login}""",
-                                json=self.master.headers_cookies,
-                            ).json()
-                        ],
+                        height=600,
+                        scroll=ft.ScrollMode.ALWAYS,
                     ),
-                    ft.Column([ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data)]),
-                ]
+                    ft.Column(
+                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data)],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
             ),
             alignment=ft.alignment.center,
         )
+
         self.page.update()

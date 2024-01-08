@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Form, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from lxml import html
 import requests
@@ -9,10 +10,14 @@ import asyncio
 from datetime import datetime
 
 from src.settings.const import ConstHeader, ConstUrl
-from .schemas import ResponseLoginSchema, UserSchema, AbsSchema, AbsActiveSchema
-from src.apps.models import User, AbsActive
+from .schemas import ResponseLoginSchema, HeadersSchema, CookiesSchema, UserSchema, AbsSchema, AbsActiveSchema
+from src.apps.models import User, AbsActive, Abs
 from src.settings.db import get_async_session
-from src.apps.FARPOST.utilities import *
+from src.apps.FARPOST.utilities import (
+    get_ads_by_user_login,
+    async_add_data,
+    get_user_id_by_login,
+)
 
 
 router = APIRouter(prefix="/farpost", tags=["farpost"])
@@ -56,8 +61,8 @@ async def creact_abs_active(user_login: str, abs_id: int, position: int, price_l
             if active_record:
                 raise HTTPException(status_code=418, detail=f"Сейчас есть активная запись {active_record.abs_id}")
             else:
-                uuid_abs_active = uuid4()
-                new_abs_active = AbsActiveSchema(
+                uuid_abs_active: UUID = uuid4()
+                new_abs_active: AbsActiveSchema = AbsActiveSchema(
                     abs_active_id=uuid_abs_active,
                     abs_id=abs_id,
                     position=position,
@@ -111,7 +116,7 @@ async def update_items_user(
     Запрос на обновление обьявлений завязаных на пользователе
     """
 
-    session: requests.session = requests.Session()
+    session = requests.Session()
 
     session.headers.update(response.headers.dict())
 
@@ -171,12 +176,13 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
     """
     Запрос на авторизацию
     """
-    session: requests.session = requests.session()
+
+    session = requests.Session()
     common_headers: dict = {i.custom_name: i.value for i in ConstHeader}
 
     params1: dict = {"u": "/sign?return=%252F"}
     headers1: dict = common_headers.copy()
-    headers1["Referer"]: str = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+    headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
     session.get(ConstUrl.URL1.value, params=params1, headers=headers1)
 
     params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
@@ -186,20 +192,25 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
 
     response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
     tree_csrf: html.HtmlElement = html.fromstring(response.text)
-    csrf_token_value = tree_csrf.xpath("""//*[@id="csrfToken"]/@value""")[-1]
+    csrf_token_value: str = tree_csrf.xpath("""//*[@id="csrfToken"]/@value""")[-1]
     data: dict = {
         "csrfToken": csrf_token_value,
         "radio": "sign",
         "sign": f"{login}",
         "password": f"{password}",
     }
-    uuid_user = uuid4()
-    user_data = UserSchema(user_id=uuid_user, login=login, password=password)
+    uuid_user: UUID = uuid4()
+    user_data: UserSchema = UserSchema(user_id=uuid_user, login=login, password=password)
     asyncio.run(async_add_data(User, user_data))
 
     response = session.post(ConstUrl.URL_LOGIN.value, data=data)
 
-    headers_dict: dict = dict(response.headers)
-    cookies_dict: dict = requests.utils.dict_from_cookiejar(session.cookies)
-
-    return ResponseLoginSchema(**{"headers": headers_dict, "cookies": cookies_dict})
+    if requests.utils.dict_from_cookiejar(session.cookies).get("login"):
+        headers_dict: HeadersSchema = HeadersSchema(**dict(response.headers))
+        cookies_dict: CookiesSchema = CookiesSchema(**requests.utils.dict_from_cookiejar(session.cookies))
+        return ResponseLoginSchema(headers=headers_dict, cookies=cookies_dict)
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Ошибка при вводе логина или пароля, если все данные верны то возможно farpost просит подтверждение через sms код",
+        )
