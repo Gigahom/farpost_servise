@@ -5,9 +5,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.future import select
 from fastapi import Depends
 import sqlalchemy.types as types
+from sqlalchemy import delete, update
+
 
 from uuid import UUID
-from typing import List
+from typing import List, Set
 from datetime import datetime
 
 from src.settings.db import Base, get_async_session, AsyncSession
@@ -108,6 +110,22 @@ class Abs(Base):
             session.add(instance)
         await session.commit()
 
+    @classmethod
+    async def get_user_ads(cls, user_id: UUID, session: AsyncSession) -> List["Abs"]:
+        """Получение всех объявлений пользователя"""
+        
+        result = await session.execute(select(cls).filter_by(user_id=user_id))
+        return result.scalars().all()
+
+    @classmethod
+    async def delete_ads_by_ids(cls, ids: Set[int], session: AsyncSession) -> None:
+        """Удаление объявлений по их ID с учетом связанных записей, не удаляя записи из AbsActive"""
+
+        await session.execute(update(AbsActive).where(AbsActive.abs_id.in_(ids)).values(abs_id=None))
+
+        await session.execute(delete(cls).where(cls.abs_id.in_(ids)))
+        await session.commit()
+
 
 class AbsActive(Base):
     """
@@ -119,7 +137,7 @@ class AbsActive(Base):
 
     __tablename__ = "abs_active"
     abs_active_id: Mapped[UUID] = mapped_column(primary_key=True)
-    abs_id: Mapped[int] = mapped_column(ForeignKey("abs.abs_id"))
+    abs_id: Mapped[int] = mapped_column(ForeignKey("abs.abs_id", ondelete="SET NULL"), nullable=True)
     position: Mapped[int] = mapped_column()
     price_limitation: Mapped[float] = mapped_column(types.Float)
     date_creation: Mapped[datetime] = mapped_column(types.TIMESTAMP)
@@ -132,6 +150,7 @@ class AbsActive(Base):
         """
         Метод конвертирет данные в схему AbsActiveSchema
         """
+        
         return AbsActiveSchema(
             abs_active_id=self.abs_active_id,
             abs_id=self.abs_id,
@@ -146,6 +165,7 @@ class AbsActive(Base):
         """
         Метод сохрание схемы AbsActiveSchema в базу данных
         """
+        
         result = await session.execute(select(cls).filter_by(abs_active_id=schema.abs_active_id))
         instance = result.scalars().first()
         if instance:

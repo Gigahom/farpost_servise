@@ -59,7 +59,7 @@ async def creact_abs_active(user_login: str, abs_id: int, position: int, price_l
             active_record = result.scalars().first()
 
             if active_record:
-                raise HTTPException(status_code=418, detail=f"Сейчас есть активная запись {active_record.abs_id}")
+                raise HTTPException(status_code=418, detail=f"{active_record.abs_id}")
             else:
                 uuid_abs_active: UUID = uuid4()
                 new_abs_active: AbsActiveSchema = AbsActiveSchema(
@@ -113,60 +113,72 @@ async def update_items_user(
     user_login: str, response: ResponseLoginSchema, async_session: AsyncSession = Depends(get_async_session)
 ) -> List[AbsSchema]:
     """
-    Запрос на обновление обьявлений завязаных на пользователе
+    Запрос на обновление объявлений, связанных с пользователем, и удаление неактивных объявлений.
     """
 
     session = requests.Session()
-
     session.headers.update(response.headers.dict())
-
     for key, value in response.cookies.dict().items():
         session.cookies.set(key, value)
 
     try:
         result: requests.models.Response = session.get("https://www.farpost.ru/personal/actual/bulletins")
-
         tree_item: html.HtmlElement = html.fromstring(result.text)
         async with async_session as session_async:
             user_id = await get_user_id_by_login(user_login, session_async)
+            if user_id is None:
+                raise HTTPException(status_code=404, detail="User not found")
 
-        if user_id is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            # Получаем список текущих активных ID объявлений
+            current_active_ids = {
+                int(id_.strip())
+                for id_ in tree_item.xpath("//*[contains(@class, 'bull-item__image-cell')]/@data-bulletin-id")
+            }
 
-        items_list: list[AbsSchema] = [
-            AbsSchema(
-                **{
-                    "abs_id": int(id_.strip()),
-                    "user_id": user_id,
-                    "name_farpost": name.strip(),
-                    "city_english": city.strip(),
-                    "category_attribute": attr.strip()
-                    .replace(attr.split("/")[-1], "")
-                    .replace("https://www.farpost.ru/", ""),
-                    "categore": attr.strip()
-                    .replace(attr.split("/")[-1], "")
-                    .replace("https://www.farpost.ru/", "")
-                    .split("/")[1],
-                    "subcategories": attr.strip()
-                    .replace(attr.split("/")[-1], "")
-                    .replace("https://www.farpost.ru/", "")
-                    .split("/")[2],
-                    "link": attr,
-                    "link_main_img": img,
-                }
-            )
-            for id_, name, city, attr, img in zip(
-                tree_item.xpath("//*[contains(@class, 'bull-item__image-cell')]/@data-bulletin-id"),
-                tree_item.xpath("//*[contains(@class, 'bull-item__self-link')]/text()"),
-                tree_item.xpath("//*[contains(@class, 'bull-delivery__city')]/text()"),
-                tree_item.xpath("//*[contains(@class, 'bull-item__self-link')]/@href"),
-                tree_item.xpath("//img/@src"),
-            )
-        ]
-        for item in items_list:
-            await async_add_data(Abs, item)
+            # Получаем список всех записей пользователя в БД
+            all_user_ads = await Abs.get_user_ads(user_id, session_async)
 
-        return items_list
+            # Определяем ID объявлений для удаления
+            ids_to_delete = {ad.abs_id for ad in all_user_ads if ad.abs_id not in current_active_ids}
+
+            # Удаляем неактивные объявления
+            await Abs.delete_ads_by_ids(ids_to_delete, session_async)
+
+            # Теперь добавление и обновление активных объявлений
+            items_list: list[AbsSchema] = [
+                AbsSchema(
+                    **{
+                        "abs_id": int(id_.strip()),
+                        "user_id": user_id,
+                        "name_farpost": name.strip(),
+                        "city_english": city.strip(),
+                        "category_attribute": attr.strip()
+                        .replace(attr.split("/")[-1], "")
+                        .replace("https://www.farpost.ru/", ""),
+                        "categore": attr.strip()
+                        .replace(attr.split("/")[-1], "")
+                        .replace("https://www.farpost.ru/", "")
+                        .split("/")[1],
+                        "subcategories": attr.strip()
+                        .replace(attr.split("/")[-1], "")
+                        .replace("https://www.farpost.ru/", "")
+                        .split("/")[2],
+                        "link": attr,
+                        "link_main_img": img,
+                    }
+                )
+                for id_, name, city, attr, img in zip(
+                    tree_item.xpath("//*[contains(@class, 'bull-item__image-cell')]/@data-bulletin-id"),
+                    tree_item.xpath("//*[contains(@class, 'bull-item__self-link')]/text()"),
+                    tree_item.xpath("//*[contains(@class, 'bull-delivery__city')]/text()"),
+                    tree_item.xpath("//*[contains(@class, 'bull-item__self-link')]/@href"),
+                    tree_item.xpath("//img/@src"),
+                )
+            ]
+            for item in items_list:
+                await async_add_data(Abs, item)
+
+            return items_list
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=str(e))
 

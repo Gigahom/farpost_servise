@@ -3,7 +3,14 @@ from __future__ import annotations
 import flet as ft
 
 from abc import ABC, abstractmethod
-from typing import Union, Dict
+from typing import Union
+from uuid import UUID
+
+
+class AlertDialogInput(ft.AlertDialog):
+    def __init__(self, abs_id: Union[UUID, int, None] = None, *args, **kwargs):
+        self.abs_id = abs_id
+        super().__init__(*args, **kwargs)
 
 
 class ContentAbstract(ABC):

@@ -16,7 +16,7 @@ class Login(ContentAbstract):
         self.page = page
 
         self.login = ft.TextField(label="Логин")
-        self.password = ft.TextField(label="Пароль")
+        self.password = ft.TextField(label="Пароль", password=True, can_reveal_password=True)
         self.sing = ft.ElevatedButton(text="Войти", on_click=self.sing_click)
         self.load = ft.Row(
             [],
@@ -53,12 +53,16 @@ class Login(ContentAbstract):
         """
         Запрос на заголовки и куки для работы внутри приложения
         """
+
         self.load.controls.append(ft.ProgressBar(width=400, color="amber", bgcolor="#eeeeee"))
         self.page.update()
-        data = requests.post(
-            RequstsApi.Login.value, data={"login": self.login.value, "password": self.password.value}
-        ).json()
-
-        self.master.headers_cookies = data
-
-        self.master.new_win(ViewData)
+        data = requests.post(RequstsApi.Login.value, data={"login": self.login.value, "password": self.password.value})
+        if data.status_code == 200:
+            self.master.headers_cookies = data.json()
+            self.master.new_win(ViewData)
+        else:
+            detail = data.json().get("detail")
+            dlg = ft.AlertDialog(title=ft.Text(detail))
+            self.page.dialog = dlg
+            dlg.open = True
+            self.page.update()
