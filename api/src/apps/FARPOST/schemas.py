@@ -42,6 +42,26 @@ class AbsActiveSchema(BaseModel):
     date_creation: datetime
     date_closing: Optional[datetime]
 
+class AbsActiveMergeSchema(BaseModel):
+    """
+    Схема активного объявления с даными из Abs
+    """
+    
+    abs_active_id: UUID
+    user_id: UUID
+    link_main_img: str
+    link: str
+    name_farpost: str
+    city_english: str
+    categore: str
+    subcategories: str
+    category_attribute: str
+    abs_id: int
+    position: int
+    price_limitation: float
+    date_creation: datetime
+    date_closing: Optional[datetime]
+
 
 class HeadersSchema(BaseModel):
     """

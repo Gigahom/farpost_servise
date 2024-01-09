@@ -169,7 +169,7 @@ class ViewData(ContentAbstract):
         if not isinstance(data_row, dict):
             print(f"Неправильный тип данных: {type(data_row)}")
             return ft.DataRow(cells=[])
-        
+
         return ft.DataRow(
             cells=[
                 ft.DataCell(
@@ -347,7 +347,7 @@ class ViewData(ContentAbstract):
         user_login: str = self.login
         abs_id: Union[UUID, int, None] = self.dlg.abs_id
         position: int = int(self.dlg.content.controls[0].value)
-        price_limitation: float = float(self.dlg.content.controls[0].value)
+        price_limitation: float = float(self.dlg.content.controls[1].value)
         response = requests.get(
             RequstsApi.CreactAbsActive.value
             + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}"

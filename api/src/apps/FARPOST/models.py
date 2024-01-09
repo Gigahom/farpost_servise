@@ -113,7 +113,7 @@ class Abs(Base):
     @classmethod
     async def get_user_ads(cls, user_id: UUID, session: AsyncSession) -> List["Abs"]:
         """Получение всех объявлений пользователя"""
-        
+
         result = await session.execute(select(cls).filter_by(user_id=user_id))
         return result.scalars().all()
 
@@ -150,7 +150,7 @@ class AbsActive(Base):
         """
         Метод конвертирет данные в схему AbsActiveSchema
         """
-        
+
         return AbsActiveSchema(
             abs_active_id=self.abs_active_id,
             abs_id=self.abs_id,
@@ -165,7 +165,7 @@ class AbsActive(Base):
         """
         Метод сохрание схемы AbsActiveSchema в базу данных
         """
-        
+
         result = await session.execute(select(cls).filter_by(abs_active_id=schema.abs_active_id))
         instance = result.scalars().first()
         if instance:

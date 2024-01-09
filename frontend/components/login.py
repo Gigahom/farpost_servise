@@ -65,4 +65,5 @@ class Login(ContentAbstract):
             dlg = ft.AlertDialog(title=ft.Text(detail))
             self.page.dialog = dlg
             dlg.open = True
+            self.load.controls.pop(-1)
             self.page.update()

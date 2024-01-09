@@ -10,7 +10,15 @@ import asyncio
 from datetime import datetime
 
 from src.settings.const import ConstHeader, ConstUrl
-from .schemas import ResponseLoginSchema, HeadersSchema, CookiesSchema, UserSchema, AbsSchema, AbsActiveSchema
+from .schemas import (
+    ResponseLoginSchema,
+    HeadersSchema,
+    CookiesSchema,
+    UserSchema,
+    AbsSchema,
+    AbsActiveSchema,
+    AbsActiveMergeSchema,
+)
 from src.apps.models import User, AbsActive, Abs
 from src.settings.db import get_async_session
 from src.apps.FARPOST.utilities import (
@@ -24,7 +32,7 @@ router = APIRouter(prefix="/farpost", tags=["farpost"])
 
 
 @router.get("/get_abs_active_by_user")
-async def get_abs_active_by_user(user_login: str) -> List[AbsActiveSchema]:
+async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
     """
     Получает все объявления из таблицы AbsActive по user_login
     """
@@ -32,12 +40,48 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveSchema]:
     async with get_async_session() as session:
         result = await session.execute(select(User).filter_by(login=user_login))
         user = result.scalars().first()
-
         if user:
-            result = await session.execute(select(AbsActive).join(Abs).filter(Abs.user_id == user.user_id))
-            abs_active_records = result.scalars().all()
-
-            return [record.to_read_model() for record in abs_active_records]
+            result = await session.execute(
+                select(
+                    AbsActive.abs_active_id,
+                    Abs.user_id,
+                    Abs.link_main_img,
+                    Abs.link,
+                    Abs.name_farpost,
+                    Abs.city_english,
+                    Abs.categore,
+                    Abs.subcategories,
+                    Abs.category_attribute,
+                    Abs.abs_id,
+                    AbsActive.position,
+                    AbsActive.price_limitation,
+                    AbsActive.date_creation,
+                    AbsActive.date_closing,
+                )
+                .join(Abs, Abs.abs_id == AbsActive.abs_id)
+                .filter(Abs.user_id == user.user_id)
+            )
+            data = result.fetchall()
+            new_data = [
+                AbsActiveMergeSchema(
+                    abs_active_id=i[0],
+                    user_id=i[1],
+                    link_main_img=i[2],
+                    link=i[3],
+                    name_farpost=i[4],
+                    city_english=i[5],
+                    categore=i[6],
+                    subcategories=i[7],
+                    category_attribute=i[8],
+                    abs_id=i[9],
+                    position=i[10],
+                    price_limitation=i[11],
+                    date_creation=i[12],
+                    date_closing=i[13],
+                )
+                for i in data
+            ]
+            return new_data
         else:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -105,7 +149,12 @@ async def get_items(user_login: str, session: AsyncSession = Depends(get_async_s
 
     async with session as session_async:
         ads = await get_ads_by_user_login(user_login, session_async)
-    return [ad.to_read_model() for ad in ads]
+    
+    list_abs = [ad.to_read_model() for ad in ads]
+    if len(list_abs) > 0:
+        return list_abs
+    else:
+        raise HTTPException(status_code=404, detail="AbsActive record not found")
 
 
 @router.post("/update_items_user")
@@ -211,13 +260,13 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         "sign": f"{login}",
         "password": f"{password}",
     }
-    uuid_user: UUID = uuid4()
-    user_data: UserSchema = UserSchema(user_id=uuid_user, login=login, password=password)
-    asyncio.run(async_add_data(User, user_data))
 
     response = session.post(ConstUrl.URL_LOGIN.value, data=data)
 
     if requests.utils.dict_from_cookiejar(session.cookies).get("login"):
+        uuid_user: UUID = uuid4()
+        user_data: UserSchema = UserSchema(user_id=uuid_user, login=login, password=password)
+        asyncio.run(async_add_data(User, user_data))
         headers_dict: HeadersSchema = HeadersSchema(**dict(response.headers))
         cookies_dict: CookiesSchema = CookiesSchema(**requests.utils.dict_from_cookiejar(session.cookies))
         return ResponseLoginSchema(headers=headers_dict, cookies=cookies_dict)
