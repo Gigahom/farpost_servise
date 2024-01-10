@@ -36,6 +36,7 @@ class User(Base):
         """
         Метод конвертирет данные в схему UserSchema
         """
+        
         return UserSchema(user_id=self.user_id, login=self.login, password=self.password)
 
     @classmethod

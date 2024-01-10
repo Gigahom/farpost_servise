@@ -18,6 +18,7 @@ from .schemas import (
     AbsSchema,
     AbsActiveSchema,
     AbsActiveMergeSchema,
+    UserSchema,
 )
 from src.apps.models import User, AbsActive, Abs
 from src.settings.db import get_async_session
@@ -28,10 +29,86 @@ from src.apps.FARPOST.utilities import (
 )
 
 
-router = APIRouter(prefix="/farpost", tags=["farpost"])
+router: APIRouter = APIRouter(
+    prefix="/farpost",
+)
+
+tags_metadata_farpost = [
+    {
+        "name": "Система контроля",
+        "description": "Для работы системы контроля",
+    },
+    {
+        "name": "Приложение",
+        "description": "Работа в нутри приложения",
+    },
+]
+
+@router.get("/get_active_data_close_none", tags=["Система контроля"], summary="Возвращает \"Работающая запись\"")
+async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
+    """Получение всех активных объявлений"""
+    
+    async with get_async_session() as session:
+        result = await session.execute(
+            select(
+                AbsActive.abs_active_id,
+                Abs.user_id,
+                Abs.link_main_img,
+                Abs.link,
+                Abs.name_farpost,
+                Abs.city_english,
+                Abs.categore,
+                Abs.subcategories,
+                Abs.category_attribute,
+                Abs.abs_id,
+                AbsActive.position,
+                AbsActive.price_limitation,
+                AbsActive.date_creation,
+                AbsActive.date_closing,
+            )
+            .join(Abs, Abs.abs_id == AbsActive.abs_id)
+            .filter(AbsActive.date_closing.is_(None))
+        )
+        data = result.fetchall()
+        new_data = [
+            AbsActiveMergeSchema(
+                abs_active_id=i[0],
+                user_id=i[1],
+                link_main_img=i[2],
+                link=i[3],
+                name_farpost=i[4],
+                city_english=i[5],
+                categore=i[6],
+                subcategories=i[7],
+                category_attribute=i[8],
+                abs_id=i[9],
+                position=i[10],
+                price_limitation=i[11],
+                date_creation=i[12],
+                date_closing=i[13],
+            )
+            for i in data
+        ]
+        return new_data
 
 
-@router.get("/get_abs_active_by_user")
+@router.get("/get_user_with_abs_active", tags=["Система контроля"], summary="Получение пользователя по uuid \"Активная запись\"")
+async def get_user_with_abs_active(abs_active_id: UUID) -> UserSchema:
+    """Получение пользовательских данных по id активного объявсления"""
+
+    async with get_async_session() as session:
+        result = await session.execute(
+            select(User)
+            .join(Abs, Abs.user_id == User.user_id)
+            .join(AbsActive, Abs.abs_id == AbsActive.abs_id)
+            .filter(AbsActive.abs_active_id == abs_active_id)
+        )
+        user = result.scalars().first()
+        data = user.to_read_model()
+        return data
+
+
+@router.get("/get_abs_active_by_user", tags=["Приложение"], summary="Получение все \"Активная запись\" для пользователя по его логину")
 async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
     """
     Получает все объявления из таблицы AbsActive по user_login
@@ -86,7 +163,7 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
             raise HTTPException(status_code=404, detail="User not found")
 
 
-@router.get("/creact_abs_active")
+@router.get("/creact_abs_active", tags=["Приложение"], summary="Создание \"Работающий записи\"")
 async def creact_abs_active(user_login: str, abs_id: int, position: int, price_limitation: float) -> AbsActiveSchema:
     """
     Создание новой записи для отслеживания
@@ -120,7 +197,7 @@ async def creact_abs_active(user_login: str, abs_id: int, position: int, price_l
             raise HTTPException(status_code=404, detail="User not found")
 
 
-@router.get("/stop_abs_active")
+@router.get("/stop_abs_active", tags=["Приложение"], summary="Перемещение \"Работающий записи\" в статус \"Активная запись\" ")
 async def stop_abs_active(abs_active_id: UUID) -> AbsActiveSchema:
     """
     Останавливает отслеживание, устанавливая date_closing на текущую дату и время
@@ -141,7 +218,7 @@ async def stop_abs_active(abs_active_id: UUID) -> AbsActiveSchema:
             raise HTTPException(status_code=404, detail="AbsActive record not found")
 
 
-@router.get("/get_items")
+@router.get("/get_items", tags=["Приложение"], summary="Получение всех \"Записей\" для пользователя по логину")
 async def get_items(user_login: str, session: AsyncSession = Depends(get_async_session)) -> List[AbsSchema]:
     """
     Запрос на обьявлений завязаных на пользователя из базы данных
@@ -149,7 +226,7 @@ async def get_items(user_login: str, session: AsyncSession = Depends(get_async_s
 
     async with session as session_async:
         ads = await get_ads_by_user_login(user_login, session_async)
-    
+
     list_abs = [ad.to_read_model() for ad in ads]
     if len(list_abs) > 0:
         return list_abs
@@ -157,7 +234,7 @@ async def get_items(user_login: str, session: AsyncSession = Depends(get_async_s
         raise HTTPException(status_code=404, detail="AbsActive record not found")
 
 
-@router.post("/update_items_user")
+@router.post("/update_items_user", tags=["Приложение"], summary="Получение всех \"Записей\" с farpost для пользователя по логину и данных от входа")
 async def update_items_user(
     user_login: str, response: ResponseLoginSchema, async_session: AsyncSession = Depends(get_async_session)
 ) -> List[AbsSchema]:
@@ -232,7 +309,7 @@ async def update_items_user(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/login")
+@router.post("/login", tags=["Приложение"], summary="Вход по логину и пароля с farpost")
 def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSchema:
     """
     Запрос на авторизацию

@@ -96,6 +96,9 @@ class ViewData(ContentAbstract):
                                             data_row_max_height=200,
                                             columns=[
                                                 ft.DataColumn(ft.Text("Закрыть активность")),
+                                                ft.DataColumn(ft.Text("Название")),
+                                                ft.DataColumn(ft.Text("Город")),
+                                                ft.DataColumn(ft.Text("Подкатегория")),
                                                 ft.DataColumn(ft.Text("id объявления")),
                                                 ft.DataColumn(ft.Text("Закрепленая позиция")),
                                                 ft.DataColumn(ft.Text("Лимит цены")),
@@ -154,8 +157,6 @@ class ViewData(ContentAbstract):
                 ft.DataCell(
                     ft.Image(
                         src=data_row["link_main_img"],
-                        width=150,
-                        height=200,
                     )
                 ),
             ],
@@ -179,6 +180,9 @@ class ViewData(ContentAbstract):
                     )
                 ),
                 ft.DataCell(ft.Text(data_row["abs_id"])),
+                ft.DataCell(ft.Text(data_row["name_farpost"])),
+                ft.DataCell(ft.Text(data_row["city_english"])),
+                ft.DataCell(ft.Text(data_row["subcategories"])),
                 ft.DataCell(ft.Text(data_row["position"])),
                 ft.DataCell(ft.Text(data_row["price_limitation"])),
                 ft.DataCell(ft.Text(data_row["date_creation"])),
