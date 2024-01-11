@@ -7,7 +7,6 @@ from fastapi import Depends
 import sqlalchemy.types as types
 from sqlalchemy import delete, update
 
-
 from uuid import UUID
 from typing import List, Set
 from datetime import datetime
@@ -36,7 +35,7 @@ class User(Base):
         """
         Метод конвертирет данные в схему UserSchema
         """
-        
+
         return UserSchema(user_id=self.user_id, login=self.login, password=self.password)
 
     @classmethod

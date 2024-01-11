@@ -37,17 +37,24 @@ tags_metadata_farpost = [
     {
         "name": "Система контроля",
         "description": "Для работы системы контроля",
+        "externalDocs": {
+            "description": "Запросы, которые используют система поднятия и контроля",
+        },
     },
     {
         "name": "Приложение",
         "description": "Работа в нутри приложения",
+        "externalDocs": {
+            "description": "Все запросы, которые используются web приложением",
+        },
     },
 ]
 
-@router.get("/get_active_data_close_none", tags=["Система контроля"], summary="Возвращает \"Работающая запись\"")
+
+@router.get("/get_active_data_close_none", tags=["Система контроля"], summary='Возвращает "Работающая запись"')
 async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
     """Получение всех активных объявлений"""
-    
+
     async with get_async_session() as session:
         result = await session.execute(
             select(
@@ -92,7 +99,9 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
         return new_data
 
 
-@router.get("/get_user_with_abs_active", tags=["Система контроля"], summary="Получение пользователя по uuid \"Активная запись\"")
+@router.get(
+    "/get_user_with_abs_active", tags=["Система контроля"], summary='Получение пользователя по uuid "Активная запись"'
+)
 async def get_user_with_abs_active(abs_active_id: UUID) -> UserSchema:
     """Получение пользовательских данных по id активного объявсления"""
 
@@ -108,7 +117,11 @@ async def get_user_with_abs_active(abs_active_id: UUID) -> UserSchema:
         return data
 
 
-@router.get("/get_abs_active_by_user", tags=["Приложение"], summary="Получение все \"Активная запись\" для пользователя по его логину")
+@router.get(
+    "/get_abs_active_by_user",
+    tags=["Приложение"],
+    summary='Получение все "Активная запись" для пользователя по его логину',
+)
 async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
     """
     Получает все объявления из таблицы AbsActive по user_login
@@ -163,7 +176,7 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
             raise HTTPException(status_code=404, detail="User not found")
 
 
-@router.get("/creact_abs_active", tags=["Приложение"], summary="Создание \"Работающий записи\"")
+@router.get("/creact_abs_active", tags=["Приложение"], summary='Создание "Работающий записи"')
 async def creact_abs_active(user_login: str, abs_id: int, position: int, price_limitation: float) -> AbsActiveSchema:
     """
     Создание новой записи для отслеживания
@@ -197,7 +210,9 @@ async def creact_abs_active(user_login: str, abs_id: int, position: int, price_l
             raise HTTPException(status_code=404, detail="User not found")
 
 
-@router.get("/stop_abs_active", tags=["Приложение"], summary="Перемещение \"Работающий записи\" в статус \"Активная запись\" ")
+@router.get(
+    "/stop_abs_active", tags=["Приложение"], summary='Перемещение "Работающий записи" в статус "Активная запись" '
+)
 async def stop_abs_active(abs_active_id: UUID) -> AbsActiveSchema:
     """
     Останавливает отслеживание, устанавливая date_closing на текущую дату и время
@@ -218,7 +233,7 @@ async def stop_abs_active(abs_active_id: UUID) -> AbsActiveSchema:
             raise HTTPException(status_code=404, detail="AbsActive record not found")
 
 
-@router.get("/get_items", tags=["Приложение"], summary="Получение всех \"Записей\" для пользователя по логину")
+@router.get("/get_items", tags=["Приложение"], summary='Получение всех "Записей" для пользователя по логину')
 async def get_items(user_login: str, session: AsyncSession = Depends(get_async_session)) -> List[AbsSchema]:
     """
     Запрос на обьявлений завязаных на пользователя из базы данных
@@ -234,7 +249,11 @@ async def get_items(user_login: str, session: AsyncSession = Depends(get_async_s
         raise HTTPException(status_code=404, detail="AbsActive record not found")
 
 
-@router.post("/update_items_user", tags=["Приложение"], summary="Получение всех \"Записей\" с farpost для пользователя по логину и данных от входа")
+@router.post(
+    "/update_items_user",
+    tags=["Приложение"],
+    summary='Получение всех "Записей" с farpost для пользователя по логину и данных от входа',
+)
 async def update_items_user(
     user_login: str, response: ResponseLoginSchema, async_session: AsyncSession = Depends(get_async_session)
 ) -> List[AbsSchema]:
@@ -309,7 +328,7 @@ async def update_items_user(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/login", tags=["Приложение"], summary="Вход по логину и пароля с farpost")
+@router.post("/login", tags=["Приложение", "Система контроля"], summary="Вход по логину и пароля с farpost")
 def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSchema:
     """
     Запрос на авторизацию

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 services:
   api:
     build:
@@ -16,7 +16,7 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST}
     depends_on:
       - db
-  
+
   frontend:
     build:
       context: ./frontend
@@ -40,6 +40,18 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - ./data_postgres:/var/lib/postgresql/data
+
+  control:
+    build:
+      context: ./control
+      dockerfile: Dockerfile
+    volumes:
+      - ./control:/app
+    environment:
+      - API_HOST=${API_HOST}
+      - API_PORT=${API_PORT}
+    depends_on:
+      - api
 
 volumes:
   data_postgres:
