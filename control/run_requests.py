@@ -7,6 +7,7 @@ import requests
 from lxml import html
 import time
 import os
+from typing import Union
 
 API_HOST = os.environ.get("API_HOST")
 API_PORT = os.environ.get("API_PORT")
@@ -48,32 +49,59 @@ def is_api_available(url: str, max_attempts: int = 5, delay: int = 5) -> bool:
     return False
 
 
-def parse_html_text(html_code: str) -> list[tuple]:
+def parse_html_text(html_code: str) -> dict:
+    """
+    Метод для получения записей на страницы возвращаяет
+    [(position, abs_id, position_active), ...]
+    """
+
     html_parce = html.fromstring(html_code)
 
-    list_link_id = [
-        i.split("-")[-1].split(".")[0]
+    list_link_id: list[int] = [
+        int(i.split("-")[-1].split(".")[0])
         for i in html_parce.xpath(
             """//*[contains(concat( " ", @class, " " ), concat( " ", "bull-item__self-link", " " ))]/@href"""
         )
     ]
-    list_item_info = [
-        i.split(":")[1].split("-")[0][2:]
+    list_item_price: list[float] = [
+        float(i.split(":")[1].split("-")[0][2:])
         for i in html_parce.xpath(
             """//*[contains(concat( " ", @class, " " ), concat( " ", "bull-item__image-cell", " " ))]/@data-order-key"""
         )
     ]
-    data = []
-    for i, id_item, price in zip(range(1, len(list_link_id) + 1), list_link_id, list_item_info):
-        data.append((i, int(id_item), float(price)))
+    dict_items: dict = {}
 
-    return data
+    for i, id_item, price in zip(range(1, len(list_link_id) + 1), list_link_id, list_item_price):
+        dict_items[f"{i}"] = {
+            "abs_id": id_item,
+            "price": price,
+        }
+
+    return dict_items
 
 
-def up_rating() -> None:
-    list_items_parse = [
+def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, float]:
+    position_item = dict_items.get(f"{position}")
+    if position_item:
+        if position_item.get("abs_id") != abs_id:
+            return position_item.get("price") + 1
+        else:
+            return None
+    else:
+        return None
+
+
+def up_abs(abs_id: int, price: float) -> None:
+    logger.info(f"Объявление : {abs_id} | Цена поднятия : {price}")
+
+
+def checking_position() -> None:
+    list_items_parse: list[dict] = [
         {
-            "id": i["abs_id"],
+            "abs_id": i["abs_id"],
+            "abs_active_id": i["abs_active_id"],
+            "position": i["position"],
+            "price_limitation": i["price_limitation"],
             "attr": i["category_attribute"],
         }
         for i in requests.get(url=get_active_data_close_none).json()
@@ -94,15 +122,20 @@ def up_rating() -> None:
         driver.get(f"https://www.farpost.ru/" + items["attr"])
         html_code = driver.page_source
 
-        list_data = parse_html_text(html_code)
+        dict_data = parse_html_text(html_code)
 
-        logger.info(list_data)
+        price_up = check_position(items.get("position"), dict_data, items.get("abs_id"))
+        if price_up:
+            if price_up < items.get("price_limitation"):
+                up_abs(items.get("abs_id"), price_up)
+        else:
+            pass
 
     driver.quit()
 
 
 if is_api_available(get_active_data_close_none):
     while True:
-        up_rating()
+        checking_position()
 else:
     logger.error("API недоступно.")
