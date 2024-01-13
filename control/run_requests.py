@@ -8,6 +8,8 @@ from lxml import html
 import time
 import os
 from typing import Union
+from uuid import UUID
+import re
 
 API_HOST = os.environ.get("API_HOST")
 API_PORT = os.environ.get("API_PORT")
@@ -15,6 +17,7 @@ API_PORT = os.environ.get("API_PORT")
 PREF_FARPOST = "/api/v1/farpost"
 
 get_active_data_close_none = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_active_data_close_none"
+get_user_with_abs_active = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_user_with_abs_active?abs_active_id="
 
 logger.add("log/log_control.log", rotation="2 MB")
 
@@ -91,8 +94,44 @@ def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, 
         return None
 
 
-def up_abs(abs_id: int, price: float) -> None:
-    logger.info(f"Объявление : {abs_id} | Цена поднятия : {price}")
+def up_abs(abs_id: int, price: float, abs_active_id: UUID, position: int) -> None:
+    user = requests.get(get_user_with_abs_active+abs_active_id).json()
+    
+    driver = webdriver.Chrome(options=options)
+    driver.set_network_conditions(
+        offline=False,
+        latency=5,
+        download_throughput=500 * 1024,
+        upload_throughput=500 * 1024,
+        connection_type="wifi",
+    )
+    driver.get("https://www.farpost.ru")
+    time.sleep(0.01)
+
+    driver.get("https://www.farpost.ru/sign")
+    element = driver.find_element(By.NAME, "sign")
+    element.send_keys(user.get("login"))
+    element = driver.find_element(By.NAME, "password")
+    element.send_keys(user.get("password"))
+    driver.find_element(By.ID, "signbutton").click()
+
+    cookies = {cookie["name"]: cookie["value"] for cookie in driver.get_cookies()}
+
+    driver.quit()
+
+    while True:
+        requests.get(
+            f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
+            cookies=cookies,
+        )
+        result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
+        item_top = html.fromstring(result.text)
+        text = item_top.xpath("//strong/text()")
+        top = int(re.findall(r"\d+", text[0])[0])
+        if top == position:
+            break
+
+    logger.info(f"Объявление : {abs_id} | Цена поднятия : {price} | Позиция сейчас : {top}")
 
 
 def checking_position() -> None:
@@ -127,7 +166,7 @@ def checking_position() -> None:
         price_up = check_position(items.get("position"), dict_data, items.get("abs_id"))
         if price_up:
             if price_up < items.get("price_limitation"):
-                up_abs(items.get("abs_id"), price_up)
+                up_abs(items.get("abs_id"), price_up, items.get("abs_active_id"), items.get("position"))
         else:
             pass
 
