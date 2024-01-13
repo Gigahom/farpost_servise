@@ -84,6 +84,8 @@ def parse_html_text(html_code: str) -> dict:
 
 
 def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, float]:
+    """Получение цены за позицию"""
+    
     position_item = dict_items.get(f"{position}")
     if position_item:
         if position_item.get("abs_id") != abs_id:
@@ -95,6 +97,8 @@ def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, 
 
 
 def up_abs(abs_id: int, price: float, abs_active_id: UUID, position: int) -> None:
+    """Поднятия на позицию"""
+    
     user = requests.get(get_user_with_abs_active+abs_active_id).json()
     
     driver = webdriver.Chrome(options=options)
@@ -135,6 +139,8 @@ def up_abs(abs_id: int, price: float, abs_active_id: UUID, position: int) -> Non
 
 
 def checking_position() -> None:
+    """Основной цикал"""
+    
     list_items_parse: list[dict] = [
         {
             "abs_id": i["abs_id"],
