@@ -1,7 +1,5 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
 from loguru import logger
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import requests
 from lxml import html
@@ -17,17 +15,20 @@ API_PORT = os.environ.get("API_PORT")
 PREF_FARPOST = "/api/v1/farpost"
 
 get_active_data_close_none = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_active_data_close_none"
+update_cookies = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_cookies"
 get_user_with_abs_active = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_user_with_abs_active?abs_active_id="
+get_cookies_with_user = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_cookies_with_user?login="
 
 logger.add("log/log_control.log", rotation="2 MB")
 
-options = Options()
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-gpu")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument("--headless")
-options.add_argument("--start-maximized")
+scheduler = BackgroundScheduler(timezone="Europe/Moscow")
 
+def prompt()->None:
+    requests.get(update_cookies)
+    logger.info("Куки обновлены для всех пользователей")
+
+scheduler.add_job(prompt, "interval", seconds=86400)
+scheduler.start()
 
 def is_api_available(url: str, max_attempts: int = 5, delay: int = 5) -> bool:
     """Проверяет доступность API.
@@ -55,6 +56,7 @@ def is_api_available(url: str, max_attempts: int = 5, delay: int = 5) -> bool:
 def parse_html_text(html_code: str) -> dict:
     """
     Метод для получения записей на страницы возвращаяет
+
     [(position, abs_id, position_active), ...]
     """
 
@@ -85,7 +87,7 @@ def parse_html_text(html_code: str) -> dict:
 
 def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, float]:
     """Получение цены за позицию"""
-    
+
     position_item = dict_items.get(f"{position}")
     if position_item:
         if position_item.get("abs_id") != abs_id:
@@ -96,32 +98,8 @@ def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, 
         return None
 
 
-def up_abs(abs_id: int, price: float, abs_active_id: UUID, position: int) -> None:
+def up_abs(abs_id: int, price: float, abs_active_id: UUID, position: int, cookies: dict) -> None:
     """Поднятия на позицию"""
-    
-    user = requests.get(get_user_with_abs_active+abs_active_id).json()
-    
-    driver = webdriver.Chrome(options=options)
-    driver.set_network_conditions(
-        offline=False,
-        latency=5,
-        download_throughput=500 * 1024,
-        upload_throughput=500 * 1024,
-        connection_type="wifi",
-    )
-    driver.get("https://www.farpost.ru")
-    time.sleep(0.01)
-
-    driver.get("https://www.farpost.ru/sign")
-    element = driver.find_element(By.NAME, "sign")
-    element.send_keys(user.get("login"))
-    element = driver.find_element(By.NAME, "password")
-    element.send_keys(user.get("password"))
-    driver.find_element(By.ID, "signbutton").click()
-
-    cookies = {cookie["name"]: cookie["value"] for cookie in driver.get_cookies()}
-
-    driver.quit()
 
     while True:
         requests.get(
@@ -140,7 +118,7 @@ def up_abs(abs_id: int, price: float, abs_active_id: UUID, position: int) -> Non
 
 def checking_position() -> None:
     """Основной цикал"""
-    
+
     list_items_parse: list[dict] = [
         {
             "abs_id": i["abs_id"],
@@ -152,31 +130,45 @@ def checking_position() -> None:
         for i in requests.get(url=get_active_data_close_none).json()
     ]
 
-    driver = webdriver.Chrome(options=options)
-    driver.set_network_conditions(
-        offline=False,
-        latency=5,
-        download_throughput=500 * 1024,
-        upload_throughput=500 * 1024,
-        connection_type="wifi",
-    )
-    driver.get("https://www.farpost.ru")
-    time.sleep(0.01)
-
     for items in list_items_parse:
-        driver.get(f"https://www.farpost.ru/" + items["attr"])
-        html_code = driver.page_source
+        common_headers = {
+            "Host": "www.farpost.ru",
+            "Cache-Control": "max-age=0",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Sec_Fetch_Site": "same-origin",
+            "Sec_Fetch_Mode": "navigate",
+        }
+        session = requests.Session()
+
+        params1: dict = {"u": "/sign?return=%252F"}
+        headers1: dict = common_headers.copy()
+        headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+        session.get("https://www.farpost.ru/verify", params=params1, headers=headers1)
+
+        params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
+        headers2: dict = common_headers.copy()
+        headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+        session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
+
+        user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
+        cookies = requests.get(get_cookies_with_user + user.get("login")).json()
+
+        html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
+        tree: html.HtmlElement = html.fromstring(html_code)
+        title: str = tree.xpath("/html/head/title/text()")
+
+        logger.debug("Название раздела для сбора : " + ",".join(title))
 
         dict_data = parse_html_text(html_code)
 
         price_up = check_position(items.get("position"), dict_data, items.get("abs_id"))
         if price_up:
             if price_up < items.get("price_limitation"):
-                up_abs(items.get("abs_id"), price_up, items.get("abs_active_id"), items.get("position"))
+                up_abs(items.get("abs_id"), price_up, items.get("abs_active_id"), items.get("position"), cookies)
         else:
             pass
-
-    driver.quit()
 
 
 if is_api_available(get_active_data_close_none):

@@ -7,20 +7,82 @@ from fastapi import Depends
 import sqlalchemy.types as types
 from sqlalchemy import delete, update
 
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import List, Set
 from datetime import datetime
 
 from src.settings.db import Base, get_async_session, AsyncSession
-from src.apps.FARPOST.schemas import UserSchema, AbsSchema, AbsActiveSchema
+from src.apps.FARPOST.schemas import UserSchema, AbsSchema, AbsActiveSchema, CookiesSchema
+
+
+class Cookies(Base):
+    __tablename__ = "cookies"
+    cookies_id: Mapped[UUID] = mapped_column(SA_UUID(as_uuid=True), primary_key=True)
+    ring: Mapped[str] = mapped_column(String)
+    boobs: Mapped[str] = mapped_column(String)
+    pony: Mapped[str] = mapped_column(String)
+    login: Mapped[str] = mapped_column(String)
+    protected_deals_top_line: Mapped[str] = mapped_column(String)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("user_farpost.user_id"))
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="cookies")
+
+    def to_read_model(self) -> CookiesSchema:
+        """
+        Метод конвертирет данные в схему CookiesSchema
+        """
+
+        return CookiesSchema(
+            ring=self.ring,
+            boobs=self.boobs,
+            pony=self.pony,
+            login=self.login,
+            protected_deals_top_line=self.protected_deals_top_line,
+        )
+
+    @classmethod
+    async def save_from_schema(cls, schema: CookiesSchema, session: AsyncSession) -> None:
+        """
+        Метод сохрание схемы CookiesSchema в базу данных
+        """
+
+        result = await session.execute(select(cls).filter_by(login=schema.login))
+        instance = result.scalars().first()
+
+        result_user = await session.execute(select(User).filter_by(login=schema.login))
+        instance_user = result_user.scalars().first()
+
+        if instance:
+            instance.login = schema.login
+            instance.ring = schema.ring
+            instance.boobs = schema.boobs
+            instance.pony = schema.pony
+            instance.protected_deals_top_line = schema.protected_deals_top_line
+        else:
+            instance = cls(
+                cookies_id=uuid4(),
+                ring=schema.ring,
+                boobs=schema.boobs,
+                pony=schema.pony,
+                login=schema.login,
+                protected_deals_top_line=schema.protected_deals_top_line,
+                user_id=instance_user.user_id,
+            )
+            session.add(instance)
+        await session.commit()
 
 
 class User(Base):
     """
-    Модель базы пользователя в базе данных в содержет поля user_id: uuid, login: str, password: str
+    Модель базы пользователя в базе данных в содержет поля:
+    - user_id: uuid,
+    - login: str,
+    - password: str
+
     Так же есть методы:
-    to_read_model-> конвертирует данные из sql в схему UserSchema
-    save_from_schema-> добавляет данные или обновляет из схемы UserSchema в базе данных
+    - to_read_model-> конвертирует данные из sql в схему UserSchema
+    - save_from_schema-> добавляет данные или обновляет из схемы UserSchema в базе данных
     """
 
     __tablename__ = "user_farpost"
@@ -30,6 +92,7 @@ class User(Base):
 
     # Relationships
     abses: Mapped[List["Abs"]] = relationship("Abs", back_populates="user")
+    cookies: Mapped[List["Cookies"]] = relationship("Cookies", back_populates="user")
 
     def to_read_model(self) -> UserSchema:
         """
@@ -43,6 +106,7 @@ class User(Base):
         """
         Метод сохрание схемы UserSchema в базу данных
         """
+
         result = await session.execute(select(cls).filter_by(login=schema.login))
         instance = result.scalars().first()
 

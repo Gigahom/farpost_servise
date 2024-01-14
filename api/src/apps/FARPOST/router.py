@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 
 from lxml import html
 import requests
-from typing import List
+from typing import List, Union
 from uuid import uuid4, UUID
 import asyncio
 from datetime import datetime
@@ -19,8 +19,10 @@ from .schemas import (
     AbsActiveSchema,
     AbsActiveMergeSchema,
     UserSchema,
+    CookiesSchema,
 )
-from src.apps.models import User, AbsActive, Abs
+
+from src.apps.models import User, AbsActive, Abs, Cookies
 from src.settings.db import get_async_session
 from src.apps.FARPOST.utilities import (
     get_ads_by_user_login,
@@ -33,7 +35,7 @@ router: APIRouter = APIRouter(
     prefix="/farpost",
 )
 
-tags_metadata_farpost = [
+tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
     {
         "name": "Система контроля",
         "description": "Для работы системы контроля",
@@ -49,6 +51,64 @@ tags_metadata_farpost = [
         },
     },
 ]
+
+
+async def update_cookies(user: UserSchema) -> CookiesSchema:
+    session = requests.Session()
+    common_headers: dict = {i.custom_name: i.value for i in ConstHeader}
+
+    params1: dict = {"u": "/sign?return=%252F"}
+    headers1: dict = common_headers.copy()
+    headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+    session.get(ConstUrl.URL1.value, params=params1, headers=headers1)
+
+    params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
+    headers2: dict = common_headers.copy()
+    headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+    session.get(ConstUrl.URL2.value, params=params2, headers=headers2)
+
+    response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
+    tree_csrf: html.HtmlElement = html.fromstring(response.text)
+    csrf_token_value: str = tree_csrf.xpath("""//*[@id="csrfToken"]/@value""")[-1]
+    data: dict = {
+        "csrfToken": csrf_token_value,
+        "radio": "sign",
+        "sign": f"{user.login}",
+        "password": f"{user.password}",
+    }
+
+    response = session.post(ConstUrl.URL_LOGIN.value, data=data)
+
+    if requests.utils.dict_from_cookiejar(session.cookies).get("login"):
+        cookies_dict: CookiesSchema = CookiesSchema(**requests.utils.dict_from_cookiejar(session.cookies))
+        await async_add_data(Cookies, cookies_dict)
+        return cookies_dict
+    else:
+        return update_cookies(user)
+
+
+@router.get("/get_cookies_with_user", tags=["Система контроля"], summary="Возвращает куки для пользователя")
+async def get_cookies_with_user(login: str) -> CookiesSchema:
+    """Получение куков для пользователя по login"""
+
+    async with get_async_session() as session:
+        result = await session.execute(select(Cookies).filter(Cookies.login == login))
+        cookies = result.scalars().first()
+        if cookies:
+            data = cookies.to_read_model()
+            return data
+        else:
+            raise HTTPException(status_code=404, detail="User not found") 
+
+@router.get("/update_cookies", tags=["Система контроля"], summary="Обновление куков для всех пользоватей")
+async def get_update_cookies() -> None:
+    """Обновление куков для всех пользоватей"""
+
+    async with get_async_session() as session:
+        result = await session.execute(select(User))
+        users = result.fetchall()
+        for user in users:
+            await update_cookies(user=user[0].to_read_model())
 
 
 @router.get("/get_active_data_close_none", tags=["Система контроля"], summary='Возвращает "Работающая запись"')
