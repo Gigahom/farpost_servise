@@ -51,8 +51,8 @@ class ViewData(ContentAbstract):
                                 ft.Column(
                                     [
                                         ft.DataTable(
-                                            data_row_min_height=150,
-                                            data_row_max_height=200,
+                                            data_row_min_height=50,
+                                            data_row_max_height=100,
                                             columns=[
                                                 ft.DataColumn(ft.Text("Настройки")),
                                                 ft.DataColumn(ft.Text("Название")),
@@ -92,8 +92,8 @@ class ViewData(ContentAbstract):
                                 ft.Column(
                                     [
                                         ft.DataTable(
-                                            data_row_min_height=150,
-                                            data_row_max_height=200,
+                                            data_row_min_height=50,
+                                            data_row_max_height=100,
                                             columns=[
                                                 ft.DataColumn(ft.Text("Закрыть активность")),
                                                 ft.DataColumn(ft.Text("Название")),
@@ -211,8 +211,8 @@ class ViewData(ContentAbstract):
                     ft.Column(
                         [
                             ft.DataTable(
-                                data_row_min_height=150,
-                                data_row_max_height=200,
+                                data_row_min_height=50,
+                                data_row_max_height=100,
                                 columns=[
                                     ft.DataColumn(ft.Text("Настройки")),
                                     ft.DataColumn(ft.Text("Название")),
@@ -258,10 +258,13 @@ class ViewData(ContentAbstract):
                     ft.Column(
                         [
                             ft.DataTable(
-                                data_row_min_height=150,
-                                data_row_max_height=200,
+                                data_row_min_height=50,
+                                data_row_max_height=100,
                                 columns=[
                                     ft.DataColumn(ft.Text("Закрыть активность")),
+                                    ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(ft.Text("Город")),
+                                    ft.DataColumn(ft.Text("Подкатегория")),
                                     ft.DataColumn(ft.Text("id объявления")),
                                     ft.DataColumn(ft.Text("Закрепленая позиция")),
                                     ft.DataColumn(ft.Text("Лимит цены")),
