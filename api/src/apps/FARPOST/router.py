@@ -98,7 +98,8 @@ async def get_cookies_with_user(login: str) -> CookiesSchema:
             data = cookies.to_read_model()
             return data
         else:
-            raise HTTPException(status_code=404, detail="User not found") 
+            raise HTTPException(status_code=404, detail="User not found")
+
 
 @router.get("/update_cookies", tags=["Система контроля"], summary="Обновление куков для всех пользоватей")
 async def get_update_cookies() -> None:
@@ -210,6 +211,67 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                 )
                 .join(Abs, Abs.abs_id == AbsActive.abs_id)
                 .filter(Abs.user_id == user.user_id)
+                .filter(AbsActive.date_closing.is_not(None))
+            )
+            data = result.fetchall()
+            new_data = [
+                AbsActiveMergeSchema(
+                    abs_active_id=i[0],
+                    user_id=i[1],
+                    link_main_img=i[2],
+                    link=i[3],
+                    name_farpost=i[4],
+                    city_english=i[5],
+                    categore=i[6],
+                    subcategories=i[7],
+                    category_attribute=i[8],
+                    abs_id=i[9],
+                    position=i[10],
+                    price_limitation=i[11],
+                    date_creation=i[12],
+                    date_closing=i[13],
+                )
+                for i in data
+            ]
+            return new_data
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.get(
+    "/get_abs_active_by_user_none",
+    tags=["Приложение"],
+    summary='Получение все "Работающие запись" для пользователя по его логину',
+)
+async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSchema]:
+    """
+    Получает все объявления из таблицы AbsActive по user_login
+    """
+
+    async with get_async_session() as session:
+        result = await session.execute(select(User).filter_by(login=user_login))
+        user = result.scalars().first()
+        if user:
+            result = await session.execute(
+                select(
+                    AbsActive.abs_active_id,
+                    Abs.user_id,
+                    Abs.link_main_img,
+                    Abs.link,
+                    Abs.name_farpost,
+                    Abs.city_english,
+                    Abs.categore,
+                    Abs.subcategories,
+                    Abs.category_attribute,
+                    Abs.abs_id,
+                    AbsActive.position,
+                    AbsActive.price_limitation,
+                    AbsActive.date_creation,
+                    AbsActive.date_closing,
+                )
+                .join(Abs, Abs.abs_id == AbsActive.abs_id)
+                .filter(Abs.user_id == user.user_id)
+                .filter(AbsActive.date_closing.is_(None))
             )
             data = result.fetchall()
             new_data = [
@@ -287,6 +349,27 @@ async def stop_abs_active(abs_active_id: UUID) -> AbsActiveSchema:
 
             session.add(abs_active_record)
             await session.commit()
+
+            result_abs = await session.execute(
+                select(Abs.abs_id)
+                .join(AbsActive, Abs.abs_id == AbsActive.abs_id)
+                .filter(AbsActive.abs_active_id == abs_active_record.abs_active_id)
+            )
+            abs_id = result_abs.fetchall()[0][0]
+
+            result_user = await session.execute(
+                select(User.login).join(Abs, Abs.user_id == User.user_id).filter(Abs.abs_id == abs_id)
+            )
+            user_login = result_user.fetchall()[0][0]
+
+            result_cookies = await session.execute(select(Cookies).filter(Cookies.login == user_login))
+            cookies = result_cookies.scalar()
+            cookies = cookies.to_read_model().model_dump(exclude_unset=True)
+
+            requests.get(
+                f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                cookies=cookies,
+            )
 
             return abs_active_record.to_read_model()
         else:

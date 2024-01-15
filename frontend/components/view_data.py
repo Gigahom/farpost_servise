@@ -37,174 +37,8 @@ class ViewData(ContentAbstract):
             content=ft.Column([ft.ElevatedButton(text="Выйти", on_click=self.out)]),
             alignment=ft.alignment.center,
         )
-        self.tab_menu = ft.Tabs(
-            selected_index=1,
-            animation_duration=300,
-            tabs=[
-                ft.Tab(icon=ft.icons.SETTINGS, content=self.tab_settings_content),
-                ft.Tab(
-                    text="Все",
-                    content=ft.Container(
-                        content=ft.Row(
-                            [
-                                ft.Column(),
-                                ft.Column(
-                                    [
-                                        ft.DataTable(
-                                            data_row_min_height=50,
-                                            data_row_max_height=100,
-                                            columns=[
-                                                ft.DataColumn(ft.Text("Настройки")),
-                                                ft.DataColumn(ft.Text("Название")),
-                                                ft.DataColumn(ft.Text("Город")),
-                                                ft.DataColumn(ft.Text("Категория")),
-                                                ft.DataColumn(ft.Text("Подкатегория")),
-                                                ft.DataColumn(ft.Text("Изображение")),
-                                            ],
-                                            rows=[
-                                                self.creact_row(i)
-                                                for i in requests.get(
-                                                    RequstsApi.Items.value + f"""?user_login={self.login}"""
-                                                ).json()
-                                            ],
-                                        ),
-                                    ],
-                                    height=600,
-                                    scroll=ft.ScrollMode.ALWAYS,
-                                ),
-                                ft.Column(
-                                    [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data)],
-                                    alignment=ft.MainAxisAlignment.CENTER,
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                        ),
-                        alignment=ft.alignment.center,
-                    ),
-                ),
-                ft.Tab(
-                    text="Активные",
-                    content=ft.Container(
-                        content=ft.Row(
-                            [
-                                ft.Column(),
-                                ft.Column(
-                                    [
-                                        ft.DataTable(
-                                            data_row_min_height=50,
-                                            data_row_max_height=100,
-                                            columns=[
-                                                ft.DataColumn(ft.Text("Закрыть активность")),
-                                                ft.DataColumn(ft.Text("Название")),
-                                                ft.DataColumn(ft.Text("Город")),
-                                                ft.DataColumn(ft.Text("Подкатегория")),
-                                                ft.DataColumn(ft.Text("id объявления")),
-                                                ft.DataColumn(ft.Text("Закрепленая позиция")),
-                                                ft.DataColumn(ft.Text("Лимит цены")),
-                                                ft.DataColumn(ft.Text("Дата начала")),
-                                                ft.DataColumn(ft.Text("Дата конца")),
-                                            ],
-                                            rows=[
-                                                self.creact_row_active(i)
-                                                for i in requests.get(
-                                                    RequstsApi.AbsActiveWithUser.value
-                                                    + f"""?user_login={self.login}"""
-                                                ).json()
-                                            ],
-                                        ),
-                                    ],
-                                    height=600,
-                                    scroll=ft.ScrollMode.ALWAYS,
-                                ),
-                                ft.Column(
-                                    [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data_active)],
-                                    alignment=ft.MainAxisAlignment.CENTER,
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                        ),
-                        alignment=ft.alignment.center,
-                    ),
-                ),
-            ],
-            expand=1,
-        )
-        self.page.add(self.tab_menu)
 
-    def creact_row(self, data_row: dict) -> ft.DataRow:
-        """
-        Создание данных в нутри таблицы
-        """
-
-        if not isinstance(data_row, dict):
-            print(f"Неправильный тип данных: {type(data_row)}")
-            return ft.DataRow(cells=[])
-
-        return ft.DataRow(
-            cells=[
-                ft.DataCell(
-                    ft.IconButton(
-                        icon=ft.icons.PENDING_ACTIONS_ROUNDED,
-                        on_click=lambda e: self.open_dialog(e, data_row["abs_id"]),
-                    )
-                ),
-                ft.DataCell(ft.Text(data_row["name_farpost"])),
-                ft.DataCell(ft.Text(data_row["city_english"])),
-                ft.DataCell(ft.Text(data_row["categore"])),
-                ft.DataCell(ft.Text(data_row["subcategories"])),
-                ft.DataCell(
-                    ft.Image(
-                        src=data_row["link_main_img"],
-                    )
-                ),
-            ],
-        )
-
-    def creact_row_active(self, data_row: dict) -> ft.DataRow:
-        """
-        Создание данных в нутри таблицы активные
-        """
-
-        if not isinstance(data_row, dict):
-            print(f"Неправильный тип данных: {type(data_row)}")
-            return ft.DataRow(cells=[])
-
-        return ft.DataRow(
-            cells=[
-                ft.DataCell(
-                    ft.IconButton(
-                        icon=ft.icons.DELETE,
-                        on_click=lambda e: self.open_dialog_confirmation(e, data_row["abs_active_id"]),
-                    )
-                ),
-                ft.DataCell(ft.Text(data_row["abs_id"])),
-                ft.DataCell(ft.Text(data_row["name_farpost"])),
-                ft.DataCell(ft.Text(data_row["city_english"])),
-                ft.DataCell(ft.Text(data_row["subcategories"])),
-                ft.DataCell(ft.Text(data_row["position"])),
-                ft.DataCell(ft.Text(data_row["price_limitation"])),
-                ft.DataCell(ft.Text(data_row["date_creation"])),
-                ft.DataCell(ft.Text(data_row["date_closing"])),
-            ],
-        )
-
-    def out(self, e) -> None:
-        """
-        Метод для выхода в авторизацию
-        """
-
-        login = importlib.import_module("components.login")
-        self.master.headers_cookies = None
-        self.master.new_win(login.Login)
-
-    def update_data(self, e) -> None:
-        """
-        Запрос на обновление
-        """
-
-        self.tab_menu.tabs[1].content = ft.Container(
+        self.tab_all_content = ft.Container(
             content=ft.Row(
                 [
                     ft.Column(),
@@ -222,10 +56,9 @@ class ViewData(ContentAbstract):
                                     ft.DataColumn(ft.Text("Изображение")),
                                 ],
                                 rows=[
-                                    self.creact_row(i)
-                                    for i in requests.post(
-                                        RequstsApi.Updata.value + f"""?user_login={self.login}""",
-                                        json=self.master.headers_cookies,
+                                    self.creact_row(i, "All")
+                                    for i in requests.get(
+                                        RequstsApi.Items.value + f"""?user_login={self.login}"""
                                     ).json()
                                 ],
                             ),
@@ -234,7 +67,7 @@ class ViewData(ContentAbstract):
                         scroll=ft.ScrollMode.ALWAYS,
                     ),
                     ft.Column(
-                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data)],
+                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=lambda e: self.update_data(e, 1))],
                         alignment=ft.MainAxisAlignment.CENTER,
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
@@ -244,14 +77,48 @@ class ViewData(ContentAbstract):
             alignment=ft.alignment.center,
         )
 
-        self.page.update()
+        self.tab_histore_content = ft.Container(
+            content=ft.Row(
+                [
+                    ft.Column(),
+                    ft.Column(
+                        [
+                            ft.DataTable(
+                                data_row_min_height=50,
+                                data_row_max_height=100,
+                                columns=[
+                                    ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(ft.Text("Город")),
+                                    ft.DataColumn(ft.Text("Подкатегория")),
+                                    ft.DataColumn(ft.Text("id объявления")),
+                                    ft.DataColumn(ft.Text("Закрепленая позиция")),
+                                    ft.DataColumn(ft.Text("Лимит цены")),
+                                    ft.DataColumn(ft.Text("Дата начала")),
+                                    ft.DataColumn(ft.Text("Дата конца")),
+                                ],
+                                rows=[
+                                    self.creact_row(i, "histore")
+                                    for i in requests.get(
+                                        RequstsApi.AbsActiveWithUserNotNone.value + f"""?user_login={self.login}"""
+                                    ).json()
+                                ],
+                            ),
+                        ],
+                        height=600,
+                        scroll=ft.ScrollMode.ALWAYS,
+                    ),
+                    ft.Column(
+                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=lambda e: self.update_data(e, 2))],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            alignment=ft.alignment.center,
+        )
 
-    def update_data_active(self, e) -> None:
-        """
-        Запрос на обновление
-        """
-
-        self.tab_menu.tabs[2].content = ft.Container(
+        self.tab_active_content = ft.Container(
             content=ft.Row(
                 [
                     ft.Column(),
@@ -272,7 +139,7 @@ class ViewData(ContentAbstract):
                                     ft.DataColumn(ft.Text("Дата конца")),
                                 ],
                                 rows=[
-                                    self.creact_row_active(i)
+                                    self.creact_row(i, "active")
                                     for i in requests.get(
                                         RequstsApi.AbsActiveWithUser.value + f"""?user_login={self.login}"""
                                     ).json()
@@ -283,7 +150,7 @@ class ViewData(ContentAbstract):
                         scroll=ft.ScrollMode.ALWAYS,
                     ),
                     ft.Column(
-                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_data_active)],
+                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=lambda e: self.update_data(e, 3))],
                         alignment=ft.MainAxisAlignment.CENTER,
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
@@ -292,6 +159,211 @@ class ViewData(ContentAbstract):
             ),
             alignment=ft.alignment.center,
         )
+
+        self.tab_menu = ft.Tabs(
+            selected_index=1,
+            animation_duration=300,
+            tabs=[
+                ft.Tab(icon=ft.icons.SETTINGS, content=self.tab_settings_content),
+                ft.Tab(text="Все", content=self.tab_all_content),
+                ft.Tab(text="История", content=self.tab_histore_content),
+                ft.Tab(text="Активные", content=self.tab_active_content),
+            ],
+            expand=1,
+        )
+        self.page.add(self.tab_menu)
+
+    def creact_row(self, data_row: dict, tab_name: str) -> ft.DataRow:
+        """
+        Создание данных в нутри таблицы
+        """
+
+        if not isinstance(data_row, dict):
+            print(f"Неправильный тип данных: {type(data_row)}")
+            return ft.DataRow(cells=[])
+
+        if tab_name == "All":
+            return ft.DataRow(
+                cells=[
+                    ft.DataCell(
+                        ft.IconButton(
+                            icon=ft.icons.PENDING_ACTIONS_ROUNDED,
+                            on_click=lambda e: self.open_dialog(e, data_row["abs_id"]),
+                        )
+                    ),
+                    ft.DataCell(ft.Text(data_row["name_farpost"])),
+                    ft.DataCell(ft.Text(data_row["city_english"])),
+                    ft.DataCell(ft.Text(data_row["categore"])),
+                    ft.DataCell(ft.Text(data_row["subcategories"])),
+                    ft.DataCell(
+                        ft.Image(
+                            src=data_row["link_main_img"],
+                        )
+                    ),
+                ],
+            )
+        elif tab_name == "histore":
+            return ft.DataRow(
+                cells=[
+                    ft.DataCell(ft.Text(data_row["name_farpost"])),
+                    ft.DataCell(ft.Text(data_row["city_english"])),
+                    ft.DataCell(ft.Text(data_row["subcategories"])),
+                    ft.DataCell(ft.Text(data_row["abs_id"])),
+                    ft.DataCell(ft.Text(data_row["position"])),
+                    ft.DataCell(ft.Text(data_row["price_limitation"])),
+                    ft.DataCell(ft.Text(data_row["date_creation"])),
+                    ft.DataCell(ft.Text(data_row["date_closing"])),
+                ],
+            )
+
+        elif tab_name == "active":
+            return ft.DataRow(
+                cells=[
+                    ft.DataCell(
+                        ft.IconButton(
+                            icon=ft.icons.DELETE,
+                            on_click=lambda e: self.open_dialog_confirmation(e, data_row["abs_active_id"]),
+                        )
+                    ),
+                    ft.DataCell(ft.Text(data_row["name_farpost"])),
+                    ft.DataCell(ft.Text(data_row["city_english"])),
+                    ft.DataCell(ft.Text(data_row["subcategories"])),
+                    ft.DataCell(ft.Text(data_row["abs_id"])),
+                    ft.DataCell(ft.Text(data_row["position"])),
+                    ft.DataCell(ft.Text(data_row["price_limitation"])),
+                    ft.DataCell(ft.Text(data_row["date_creation"])),
+                    ft.DataCell(ft.Text(data_row["date_closing"])),
+                ],
+            )
+
+    def out(self, e) -> None:
+        """
+        Метод для выхода в авторизацию
+        """
+
+        login = importlib.import_module("components.login")
+        self.master.headers_cookies = None
+        self.master.new_win(login.Login)
+
+    def update_data(self, e, tab_index: int) -> None:
+        """
+        Запрос на обновление
+        """
+        if tab_index == 1:
+            self.tab_all_content.content = ft.Row(
+                [
+                    ft.Column(),
+                    ft.Column(
+                        [
+                            ft.DataTable(
+                                data_row_min_height=50,
+                                data_row_max_height=100,
+                                columns=[
+                                    ft.DataColumn(ft.Text("Настройки")),
+                                    ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(ft.Text("Город")),
+                                    ft.DataColumn(ft.Text("Категория")),
+                                    ft.DataColumn(ft.Text("Подкатегория")),
+                                    ft.DataColumn(ft.Text("Изображение")),
+                                ],
+                                rows=[
+                                    self.creact_row(i, "All")
+                                    for i in requests.get(
+                                        RequstsApi.Items.value + f"""?user_login={self.login}"""
+                                    ).json()
+                                ],
+                            ),
+                        ],
+                        height=600,
+                        scroll=ft.ScrollMode.ALWAYS,
+                    ),
+                    ft.Column(
+                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=lambda e: self.update_data(e, 1))],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
+
+        elif tab_index == 2:
+            self.tab_histore_content.content = ft.Row(
+                [
+                    ft.Column(),
+                    ft.Column(
+                        [
+                            ft.DataTable(
+                                data_row_min_height=50,
+                                data_row_max_height=100,
+                                columns=[
+                                    ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(ft.Text("Город")),
+                                    ft.DataColumn(ft.Text("Подкатегория")),
+                                    ft.DataColumn(ft.Text("id объявления")),
+                                    ft.DataColumn(ft.Text("Закрепленая позиция")),
+                                    ft.DataColumn(ft.Text("Лимит цены")),
+                                    ft.DataColumn(ft.Text("Дата начала")),
+                                    ft.DataColumn(ft.Text("Дата конца")),
+                                ],
+                                rows=[
+                                    self.creact_row(i, "histore")
+                                    for i in requests.get(
+                                        RequstsApi.AbsActiveWithUserNotNone.value + f"""?user_login={self.login}"""
+                                    ).json()
+                                ],
+                            ),
+                        ],
+                        height=600,
+                        scroll=ft.ScrollMode.ALWAYS,
+                    ),
+                    ft.Column(
+                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=lambda e: self.update_data(e, 2))],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
+
+        elif tab_index == 3:
+            self.tab_active_content.content = ft.Row(
+                [
+                    ft.Column(),
+                    ft.Column(
+                        [
+                            ft.DataTable(
+                                data_row_min_height=50,
+                                data_row_max_height=100,
+                                columns=[
+                                    ft.DataColumn(ft.Text("Закрыть активность")),
+                                    ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(ft.Text("Город")),
+                                    ft.DataColumn(ft.Text("Подкатегория")),
+                                    ft.DataColumn(ft.Text("id объявления")),
+                                    ft.DataColumn(ft.Text("Закрепленая позиция")),
+                                    ft.DataColumn(ft.Text("Лимит цены")),
+                                    ft.DataColumn(ft.Text("Дата начала")),
+                                    ft.DataColumn(ft.Text("Дата конца")),
+                                ],
+                                rows=[
+                                    self.creact_row(i, "active")
+                                    for i in requests.get(
+                                        RequstsApi.AbsActiveWithUser.value + f"""?user_login={self.login}"""
+                                    ).json()
+                                ],
+                            ),
+                        ],
+                        height=600,
+                        scroll=ft.ScrollMode.ALWAYS,
+                    ),
+                    ft.Column(
+                        [ft.IconButton(icon=ft.icons.AUTORENEW, on_click=lambda e: self.update_data(e, 3))],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
 
         self.page.update()
 
@@ -359,6 +431,7 @@ class ViewData(ContentAbstract):
             RequstsApi.CreactAbsActive.value
             + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}"
         )
+        self.update_data(1, 3)
         if response.status_code == 200:
             self.dlg.open = False
             self.page.update()
@@ -374,4 +447,5 @@ class ViewData(ContentAbstract):
         self.dlg.open = False
         self.page.update()
         sleep(1)
-        self.update_data_active(1)
+        self.update_data(1, 2)
+        self.update_data(1, 3)

@@ -34,12 +34,12 @@ def is_api_available(url: str, max_attempts: int = 5, delay: int = 5) -> bool:
     """Проверяет доступность API.
 
     Args:
-        url (str): URL API для проверки.
-        max_attempts (int, optional): Максимальное количество попыток. По умолчанию 5.
-        delay (int, optional): Задержка между попытками в секундах. По умолчанию 5.
+    - url (str): URL API для проверки.
+    - max_attempts (int, optional): Максимальное количество попыток. По умолчанию 5.
+    - delay (int, optional): Задержка между попытками в секундах. По умолчанию 5.
 
     Returns:
-        bool: True если API доступен, иначе False.
+    - bool: True если API доступен, иначе False.
     """
 
     for _ in range(max_attempts):
@@ -85,13 +85,16 @@ def parse_html_text(html_code: str) -> dict:
     return dict_items
 
 
-def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, float]:
+def check_position(position: int, dict_items: dict, abs_id: int) -> Union[None, float, int]:
     """Получение цены за позицию"""
 
     position_item = dict_items.get(f"{position}")
     if position_item:
         if position_item.get("abs_id") != abs_id:
-            return position_item.get("price") + 1
+            if position_item.get("price") < 9999:
+                return position_item.get("price") + 1
+            else:
+                return 10
         else:
             return None
     else:
@@ -102,17 +105,24 @@ def up_abs(abs_id: int, price: float, abs_active_id: UUID, position: int, cookie
     """Поднятия на позицию"""
 
     while True:
-        requests.get(
-            f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
-            cookies=cookies,
-        )
-        result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
-        item_top = html.fromstring(result.text)
-        text = item_top.xpath("//strong/text()")
-        top = int(re.findall(r"\d+", text[0])[0])
-        if top == position:
-            break
-
+        try:
+            requests.get(
+                f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                cookies=cookies,
+            )
+            requests.get(
+                f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
+                cookies=cookies,
+            )
+            result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
+            item_top = html.fromstring(result.text)
+            text = item_top.xpath("//strong/text()")
+            top = int(re.findall(r"\d+", text[0])[0])
+            if top == position:
+                break
+        except:
+            pass
+        
     logger.info(f"Объявление : {abs_id} | Цена поднятия : {price} | Позиция сейчас : {top}")
 
 

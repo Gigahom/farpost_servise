@@ -17,6 +17,7 @@ class RequstsApi(Enum):
     Login = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/login"  # POST
     Items = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_items"  # GET
     Updata = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_items_user"  # POST
-    AbsActiveWithUser = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_abs_active_by_user"  # GET
+    AbsActiveWithUser = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_abs_active_by_user_none"  # GET
+    AbsActiveWithUserNotNone = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_abs_active_by_user"  # GET
     CreactAbsActive = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/creact_abs_active"  # GET
     StopAbsActive = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/stop_abs_active"  # GET
