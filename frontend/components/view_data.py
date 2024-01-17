@@ -5,6 +5,7 @@ import importlib
 from typing import Union
 from time import sleep
 from uuid import UUID
+from lxml import html
 
 from const.const import RequstsApi
 from components.abs_class import ContentAbstract, PagesAbstract, AlertDialogInput
@@ -383,9 +384,35 @@ class ViewData(ContentAbstract):
         self.dlg.open = True
         self.page.update()
 
+    def get_top_one(self, abs_id) -> float:
+        abs = requests.get(RequstsApi.AbsInfo.value + str(abs_id)).json()
+        html_code = requests.get(
+            f"https://www.farpost.ru/" + abs["category_attribute"],
+            cookies=self.master.headers_cookies["cookies"],
+            headers=self.master.headers_cookies["headers"],
+        ).text
+
+        html_parce = html.fromstring(html_code)
+
+        list_item_price: list[float] = [
+            float(i.split(":")[1].split("-")[0][2:])
+            for i in html_parce.xpath(
+                """//*[contains(concat( " ", @class, " " ), concat( " ", "bull-item__image-cell", " " ))]/@data-order-key"""
+            )
+        ]
+        if len(list_item_price) > 0:
+            if list_item_price[0] > 10000:
+                return 10
+            else:
+                return list_item_price[0]
+        else:
+            return 10
+
     def open_dialog(self, e, abs_id) -> None:
         """Создание окна для сбора параметров"""
 
+        price = self.get_top_one(abs_id)
+        
         self.dlg = AlertDialogInput(
             abs_id=abs_id,
             modal=True,
@@ -398,6 +425,11 @@ class ViewData(ContentAbstract):
                     ft.TextField(
                         label="Лимит",
                         input_filter=ft.InputFilter(allow=True, regex_string=r"[0-9]", replacement_string=""),
+                    ),
+                    ft.Text(
+                        f"""Цена за 1 место сейчас : {price}\nРекамендуется ставить лимит в 2 раза больше чем цена за первое место
+                        """,
+                        size=20,
                     ),
                 ],
                 width=600,

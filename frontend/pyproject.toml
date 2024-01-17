@@ -10,6 +10,7 @@ python = "^3.11"
 flet = "^0.18.0"
 flet-fastapi = "^0.18.0"
 uvicorn = "^0.25.0"
+lxml = "^5.1.0"
 
 
 [build-system]

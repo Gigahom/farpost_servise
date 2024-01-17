@@ -21,3 +21,4 @@ class RequstsApi(Enum):
     AbsActiveWithUserNotNone = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_abs_active_by_user"  # GET
     CreactAbsActive = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/creact_abs_active"  # GET
     StopAbsActive = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/stop_abs_active"  # GET
+    AbsInfo = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_abs_info?abs_id="  # GET

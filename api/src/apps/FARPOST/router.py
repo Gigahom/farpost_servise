@@ -52,6 +52,19 @@ tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
     },
 ]
 
+@router.get("/get_abs_info", tags=["Приложение"], summary="Возвращает информацию записи по abs_id")
+async def get_abs_info(abs_id: int) -> AbsSchema:
+    """Возвращает информацию записи по abs_id"""
+
+    async with get_async_session() as session:
+        result = await session.execute(select(Abs).filter(Abs.abs_id == abs_id))
+        abs = result.scalars().first()
+        if abs:
+            data = abs.to_read_model()
+            return data
+        else:
+            raise HTTPException(status_code=404, detail="Abs not found")
+
 
 async def update_cookies(user: UserSchema) -> CookiesSchema:
     session = requests.Session()

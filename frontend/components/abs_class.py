@@ -3,8 +3,13 @@ from __future__ import annotations
 import flet as ft
 
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, TypedDict
 from uuid import UUID
+
+
+class HeadersCookies(TypedDict):
+    headers: dict[str, str]
+    cookies: dict[str, str]
 
 
 class AlertDialogInput(ft.AlertDialog):
@@ -30,7 +35,7 @@ class PagesAbstract(ABC):
 
     page = Union[ft.Page, None]
     views = Union[ContentAbstract, None]
-    headers_cookies = Union[dict, None]
+    headers_cookies = HeadersCookies | None
 
     @abstractmethod
     def __init__(self, page: ft.Page) -> None:
