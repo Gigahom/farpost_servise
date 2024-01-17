@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Union
 from uuid import UUID
 from datetime import datetime
 
@@ -12,6 +12,7 @@ class UserSchema(BaseModel):
     user_id: UUID
     login: str
     password: str
+    tg_chat_id: Optional[int] = None
 
 
 class AbsSchema(BaseModel):
@@ -42,11 +43,12 @@ class AbsActiveSchema(BaseModel):
     date_creation: datetime
     date_closing: Optional[datetime]
 
+
 class AbsActiveMergeSchema(BaseModel):
     """
     Схема активного объявления с даными из Abs
     """
-    
+
     abs_active_id: UUID
     user_id: UUID
     link_main_img: str
@@ -80,6 +82,17 @@ class HeadersSchema(BaseModel):
     Cache_control: str = Field(..., alias="Cache-control")
     Accept_CH: str = Field(..., alias="Accept-CH")
     Content_Encoding: str = Field(..., alias="Content-Encoding")
+
+
+class WalletSchema(BaseModel):
+    """Схема для суммы на кошельку"""
+
+    wallet: float
+
+class TelegramSchema(BaseModel):
+    """Схема для id телеграм чат пользователя"""
+
+    telegram_id: Union[int, None]
 
 
 class CookiesSchema(BaseModel):

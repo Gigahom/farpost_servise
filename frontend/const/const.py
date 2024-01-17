@@ -22,3 +22,6 @@ class RequstsApi(Enum):
     CreactAbsActive = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/creact_abs_active"  # GET
     StopAbsActive = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/stop_abs_active"  # GET
     AbsInfo = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_abs_info?abs_id="  # GET
+    Wallet = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_wallet_user?login="  # GET
+    UpdataTg = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_user_tg_chat_id?"  # GET
+    GetTg = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_telegram_chat_id?login="  # GET

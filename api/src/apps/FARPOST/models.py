@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey, String, Float, TIMESTAMP
+from sqlalchemy import ForeignKey, String, Float, TIMESTAMP, Integer
 from sqlalchemy.dialects.postgresql import UUID as SA_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.future import select
@@ -89,6 +89,7 @@ class User(Base):
     user_id: Mapped[UUID] = mapped_column(SA_UUID(as_uuid=True), primary_key=True)
     login: Mapped[str] = mapped_column(String)
     password: Mapped[str] = mapped_column(String)
+    tg_chat_id: Mapped[int] = mapped_column(Integer, nullable=True)
 
     # Relationships
     abses: Mapped[List["Abs"]] = relationship("Abs", back_populates="user")
@@ -99,7 +100,7 @@ class User(Base):
         Метод конвертирет данные в схему UserSchema
         """
 
-        return UserSchema(user_id=self.user_id, login=self.login, password=self.password)
+        return UserSchema(user_id=self.user_id, login=self.login, password=self.password, tg_chat_id=self.tg_chat_id)
 
     @classmethod
     async def save_from_schema(cls, schema: UserSchema, session: AsyncSession) -> None:
@@ -114,7 +115,9 @@ class User(Base):
             instance.login = schema.login
             instance.password = schema.password
         else:
-            instance = cls(user_id=schema.user_id, login=schema.login, password=schema.password)
+            instance = cls(
+                user_id=schema.user_id, login=schema.login, password=schema.password, tg_chat_id=None
+            )
             session.add(instance)
         await session.commit()
 

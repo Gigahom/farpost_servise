@@ -15,7 +15,7 @@ class Login(ContentAbstract):
         self.master = master
         self.page = page
 
-        self.login = ft.TextField(label="Логин")
+        self.login = ft.TextField(label="Логин ( 71234567890 )")
         self.password = ft.TextField(label="Пароль", password=True, can_reveal_password=True)
         self.sing = ft.ElevatedButton(text="Войти", on_click=self.sing_click)
         self.load = ft.Row(

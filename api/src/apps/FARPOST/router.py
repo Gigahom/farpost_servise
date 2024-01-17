@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Form, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import update
 
 from lxml import html
 import requests
@@ -18,8 +19,9 @@ from .schemas import (
     AbsSchema,
     AbsActiveSchema,
     AbsActiveMergeSchema,
-    UserSchema,
     CookiesSchema,
+    WalletSchema,
+    TelegramSchema,
 )
 
 from src.apps.models import User, AbsActive, Abs, Cookies
@@ -28,6 +30,7 @@ from src.apps.FARPOST.utilities import (
     get_ads_by_user_login,
     async_add_data,
     get_user_id_by_login,
+    get_cookies_by_user_login,
 )
 
 
@@ -51,6 +54,43 @@ tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
         },
     },
 ]
+
+
+@router.get("/get_telegram_chat_id", tags=["Приложение"], summary="Получить телеграмм chat id пользователя")
+async def get_telegram_chat_id(login: str) -> TelegramSchema:
+    async with get_async_session() as session:
+        result = await session.execute(select(User).where(User.login == login))
+        tg_chat_id = result.scalars().first().tg_chat_id
+        return TelegramSchema(telegram_id=tg_chat_id)
+
+
+@router.get("/get_wallet_user", tags=["Приложение"], summary="Получить сумму на кошельке")
+async def get_wallet_user(login: str) -> WalletSchema:
+    cookies_user = await get_cookies_by_user_login(login=login)
+    wallet_html = requests.get("https://www.farpost.ru/personal/nav?ajax=1", cookies=cookies_user).text
+    tree_wallet: html.HtmlElement = html.fromstring(wallet_html)
+    wallet: float = float(
+        tree_wallet.xpath(
+            """//*[contains(concat( " ", @class, " " ), concat( " ", "personalNavLine__balance", " " ))]/text()"""
+        )[0]
+    )
+
+    return WalletSchema(wallet=wallet)
+
+
+@router.get("/update_user_tg_chat_id", tags=["Приложение"], summary="Обновление поля tg_chat_id пользователя по login")
+async def update_user_tg_chat_id(login: str, tg_chat_id: int) -> None:
+    """
+    Обновление поля tg_chat_id пользователя с заданным login.
+    """
+    async with get_async_session() as session:
+        result = await session.execute(update(User).where(User.login == login).values(tg_chat_id=tg_chat_id))
+        await session.commit()
+        if result.rowcount == 0:
+            print(f"No user found with login {login}")
+        else:
+            print(f"Updated tg_chat_id for user with login {login}")
+
 
 @router.get("/get_abs_info", tags=["Приложение"], summary="Возвращает информацию записи по abs_id")
 async def get_abs_info(abs_id: int) -> AbsSchema:

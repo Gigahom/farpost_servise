@@ -32,10 +32,45 @@ class ViewData(ContentAbstract):
             self.login = ""
             self.out(1)
 
+        telegram_chat_id = requests.get(RequstsApi.GetTg.value + self.login).json()["telegram_id"]
+        if telegram_chat_id:
+            self.telegram_chat_id = ft.TextField(label="Ваш chat_id : " + str(telegram_chat_id))
+        else:
+            self.telegram_chat_id = ft.TextField(label="Введите свой chat_id")
+
         self.dlg: AlertDialogInput = AlertDialogInput()
 
         self.tab_settings_content = ft.Container(
-            content=ft.Column([ft.ElevatedButton(text="Выйти", on_click=self.out)]),
+            content=ft.Row(
+                controls=[
+                    ft.Column(
+                        [
+                            ft.Row(
+                                controls=[
+                                    ft.Text(value=f"Логин : " + self.login, size=17),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                            ),
+                            ft.Row(
+                                controls=[
+                                    ft.TextButton(text="Где взять", on_click=self.open_video),
+                                    self.telegram_chat_id,
+                                    ft.TextButton(text="Обновить", on_click=self.update_tg),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                            ),
+                            ft.Row(
+                                controls=[
+                                    ft.ElevatedButton(text="Выйти", on_click=self.out),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
             alignment=ft.alignment.center,
         )
 
@@ -172,7 +207,24 @@ class ViewData(ContentAbstract):
             ],
             expand=1,
         )
+        wallet_value: str = str(requests.get(RequstsApi.Wallet.value + self.login).json()["wallet"])
+        self.wallet_value = ft.Text(value=wallet_value, size=15)
+        self.wallet = ft.Row(
+            controls=[self.wallet_value, ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_wallet)]
+        )
+        self.page.add(self.wallet)
         self.page.add(self.tab_menu)
+
+    def update_tg(self, e):
+        tg_chat_id = self.telegram_chat_id.value
+        requests.get(RequstsApi.UpdataTg.value + f"login={self.login}&tg_chat_id={tg_chat_id}")
+        telegram_chat_id = requests.get(RequstsApi.GetTg.value + self.login).json()["telegram_id"]
+        self.telegram_chat_id.label = "Ваш chat_id : " + str(telegram_chat_id)
+
+        self.page.update()
+    
+    def open_video(self, e):
+        self.page.launch_url('https://lumpics.ru/how-find-out-chat-id-in-telegram/')
 
     def creact_row(self, data_row: dict, tab_name: str) -> ft.DataRow:
         """
@@ -245,6 +297,12 @@ class ViewData(ContentAbstract):
         login = importlib.import_module("components.login")
         self.master.headers_cookies = None
         self.master.new_win(login.Login)
+
+    def update_wallet(self, e) -> None:
+        wallet_value: str = str(requests.get(RequstsApi.Wallet.value + self.login).json()["wallet"])
+        self.wallet_value.value = wallet_value
+
+        self.page.update()
 
     def update_data(self, e, tab_index: int) -> None:
         """
@@ -412,7 +470,7 @@ class ViewData(ContentAbstract):
         """Создание окна для сбора параметров"""
 
         price = self.get_top_one(abs_id)
-        
+
         self.dlg = AlertDialogInput(
             abs_id=abs_id,
             modal=True,
