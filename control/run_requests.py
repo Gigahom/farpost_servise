@@ -25,7 +25,7 @@ get_telegram_chat_id = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_telegram
 
 logger.add("log/log_control.log", rotation="2 MB")
 
-scheduler = BackgroundScheduler(timezone="Europe/Moscow")
+scheduler = BackgroundScheduler(timezone="Asia/Vladivostok")
 
 
 def prompt() -> None:
@@ -189,7 +189,10 @@ def checking_position() -> None:
     for items in list_items_parse:
         datetime_now = datetime.now()
         time_now = dt_time(hour=datetime_now.hour, minute=datetime_now.minute)
-        if dt_time.fromisoformat(items.get("start_time")) < time_now and dt_time.fromisoformat(items.get("end_time")) > time_now:
+        if (
+            dt_time.fromisoformat(items.get("start_time")) < time_now
+            and dt_time.fromisoformat(items.get("end_time")) > time_now
+        ):
             common_headers = {
                 "Host": "www.farpost.ru",
                 "Cache-Control": "max-age=0",
@@ -238,7 +241,13 @@ def checking_position() -> None:
             else:
                 pass
         else:
-            pass
+            user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
+            cookies = requests.get(get_cookies_with_user + user.get("login")).json()
+            abs_id = items.get("abs_id")
+            requests.get(
+                f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                cookies=cookies,
+            )
 
 
 if is_api_available(get_active_data_close_none):
