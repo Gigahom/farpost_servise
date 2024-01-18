@@ -6,6 +6,7 @@ from typing import Union
 from time import sleep
 from uuid import UUID
 from lxml import html
+from datetime import time
 
 from const.const import RequstsApi
 from components.abs_class import ContentAbstract, PagesAbstract, AlertDialogInput
@@ -207,13 +208,53 @@ class ViewData(ContentAbstract):
             ],
             expand=1,
         )
+        
         wallet_value: str = str(requests.get(RequstsApi.Wallet.value + self.login).json()["wallet"])
         self.wallet_value = ft.Text(value=wallet_value, size=15)
         self.wallet = ft.Row(
             controls=[self.wallet_value, ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_wallet)]
         )
+        
+        self.time_picker_start = ft.TimePicker(
+            confirm_text="Подтвердить",
+            error_invalid_text="Time out of range",
+            help_text="Выберите время от",
+            on_change=self.change_time_start,
+            cancel_text="Отменить",
+            time_picker_entry_mode=ft.TimePickerEntryMode.INPUT_ONLY,
+            hour_label_text="Часы",
+            minute_label_text="Минуты"
+        )
+        self.time_picker_end = ft.TimePicker(
+            confirm_text="Подтвердить",
+            error_invalid_text="Time out of range",
+            help_text="Выберите время до",
+            on_change=self.change_time_end,
+            cancel_text="Отменить",
+            time_picker_entry_mode=ft.TimePickerEntryMode.INPUT_ONLY,
+            hour_label_text="Часы",
+            minute_label_text="Минуты"
+        )
+        
         self.page.add(self.wallet)
         self.page.add(self.tab_menu)
+        
+    def change_time_start(self,e):
+        self.time_start = time(hour=self.time_picker_start.value.hour, minute=self.time_picker_start.value.minute)
+    
+    def change_time_end(self,e):
+        self.time_end = time(hour=self.time_picker_end.value.hour, minute=self.time_picker_end.value.minute)
+        
+    def open_time_start(self, e):
+        self.page.add(self.time_picker_start)
+        self.time_picker_start.open = True
+        self.time_picker_start.update()
+
+    def open_time_end(self, e):
+        self.page.add(self.time_picker_end)
+        self.time_picker_end.open = True
+        self.time_picker_end.update()
+        
 
     def update_tg(self, e):
         tg_chat_id = self.telegram_chat_id.value
@@ -470,7 +511,17 @@ class ViewData(ContentAbstract):
         """Создание окна для сбора параметров"""
 
         price = self.get_top_one(abs_id)
-
+        
+        date_button_start = ft.ElevatedButton(
+            "Время от",
+            icon=ft.icons.TIME_TO_LEAVE,
+            on_click=self.open_time_start,
+        )
+        date_button_end = ft.ElevatedButton(
+            "Время до",
+            icon=ft.icons.TIME_TO_LEAVE,
+            on_click=self.open_time_end,
+        )
         self.dlg = AlertDialogInput(
             abs_id=abs_id,
             modal=True,
@@ -488,6 +539,12 @@ class ViewData(ContentAbstract):
                         f"""Цена за 1 место сейчас : {price}\nРекамендуется ставить лимит в 2 раза больше чем цена за первое место
                         """,
                         size=20,
+                    ),
+                    ft.Row(
+                        [
+                            date_button_start,
+                            date_button_end,
+                        ],
                     ),
                 ],
                 width=600,
@@ -519,7 +576,7 @@ class ViewData(ContentAbstract):
         price_limitation: float = float(self.dlg.content.controls[1].value)
         response = requests.get(
             RequstsApi.CreactAbsActive.value
-            + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}"
+            + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}&start_time={self.time_start}&end_time={self.time_end}"
         )
         self.update_data(1, 3)
         if response.status_code == 200:

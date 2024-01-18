@@ -8,6 +8,7 @@ import os
 from typing import Union
 from uuid import UUID
 import re
+from datetime import datetime, time
 
 API_HOST = os.environ.get("API_HOST")
 API_PORT = os.environ.get("API_PORT")
@@ -151,6 +152,11 @@ def up_abs(
             top = int(re.findall(r"\d+", text[0])[0])
             if top == position:
                 break
+            else:
+                requests.get(
+                    f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                    cookies=cookies,
+                )
         except:
             pass
 
@@ -173,57 +179,63 @@ def checking_position() -> None:
             "attr": i["category_attribute"],
             "name_farpost": i["name_farpost"],
             "link": i["link"],
-            "subcategories": i["subcategories"],
+            "start_time": i["start_time"],
+            "end_time": i["end_time"],
         }
         for i in requests.get(url=get_active_data_close_none).json()
     ]
 
     for items in list_items_parse:
-        common_headers = {
-            "Host": "www.farpost.ru",
-            "Cache-Control": "max-age=0",
-            "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "Sec_Fetch_Site": "same-origin",
-            "Sec_Fetch_Mode": "navigate",
-        }
-        session = requests.Session()
+        datetime_now = datetime.now()
+        time_now = time(hour=datetime_now.hour, minute=datetime_now.minute)
+        if time.fromisoformat(items.get("start_time")) < time_now and time.fromisoformat(items.get("end_time")) < time_now:
+            common_headers = {
+                "Host": "www.farpost.ru",
+                "Cache-Control": "max-age=0",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Sec_Fetch_Site": "same-origin",
+                "Sec_Fetch_Mode": "navigate",
+            }
+            session = requests.Session()
 
-        params1: dict = {"u": "/sign?return=%252F"}
-        headers1: dict = common_headers.copy()
-        headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-        session.get("https://www.farpost.ru/verify", params=params1, headers=headers1)
+            params1: dict = {"u": "/sign?return=%252F"}
+            headers1: dict = common_headers.copy()
+            headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+            session.get("https://www.farpost.ru/verify", params=params1, headers=headers1)
 
-        params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
-        headers2: dict = common_headers.copy()
-        headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-        session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
+            params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
+            headers2: dict = common_headers.copy()
+            headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+            session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
 
-        user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
-        cookies = requests.get(get_cookies_with_user + user.get("login")).json()
-        chat_id = requests.get(get_telegram_chat_id + user.get("login")).json()["telegram_id"]
-        html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
+            user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
+            cookies = requests.get(get_cookies_with_user + user.get("login")).json()
+            chat_id = requests.get(get_telegram_chat_id + user.get("login")).json()["telegram_id"]
+            html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
 
-        tree: html.HtmlElement = html.fromstring(html_code)
-        title: str = tree.xpath("/html/head/title/text()")
+            tree: html.HtmlElement = html.fromstring(html_code)
+            title: str = tree.xpath("/html/head/title/text()")
 
-        logger.debug("Название раздела для сбора : " + ",".join(title))
+            logger.debug("Название раздела для сбора : " + ",".join(title))
 
-        dict_data = parse_html_text(html_code)
+            dict_data = parse_html_text(html_code)
 
-        price_up = check_position(items.get("position"), dict_data, items.get("abs_id"), chat_id, items)
-        if price_up:
-            if price_up < items.get("price_limitation"):
-                up_abs(
-                    items.get("abs_id"),
-                    price_up,
-                    items.get("abs_active_id"),
-                    items.get("position"),
-                    cookies,
-                    chat_id,
-                    items,
-                )
+            price_up = check_position(items.get("position"), dict_data, items.get("abs_id"), chat_id, items)
+            if price_up:
+                if price_up < items.get("price_limitation"):
+                    up_abs(
+                        items.get("abs_id"),
+                        price_up,
+                        items.get("abs_active_id"),
+                        items.get("position"),
+                        cookies,
+                        chat_id,
+                        items,
+                    )
+            else:
+                pass
         else:
             pass
 

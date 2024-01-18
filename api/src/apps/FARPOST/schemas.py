@@ -1,8 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Union
 from uuid import UUID
-from datetime import datetime
-
+from datetime import datetime, time
 
 class UserSchema(BaseModel):
     """
@@ -42,6 +41,8 @@ class AbsActiveSchema(BaseModel):
     price_limitation: float
     date_creation: datetime
     date_closing: Optional[datetime]
+    start_time: time
+    end_time: time
 
 
 class AbsActiveMergeSchema(BaseModel):
@@ -63,6 +64,8 @@ class AbsActiveMergeSchema(BaseModel):
     price_limitation: float
     date_creation: datetime
     date_closing: Optional[datetime]
+    start_time: time
+    end_time: time
 
 
 class HeadersSchema(BaseModel):

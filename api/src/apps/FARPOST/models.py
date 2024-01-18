@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey, String, Float, TIMESTAMP, Integer
+from sqlalchemy import ForeignKey, String, Float, TIMESTAMP, Integer, Time
 from sqlalchemy.dialects.postgresql import UUID as SA_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.future import select
@@ -9,7 +9,7 @@ from sqlalchemy import delete, update
 
 from uuid import UUID, uuid4
 from typing import List, Set
-from datetime import datetime
+from datetime import datetime, time
 
 from src.settings.db import Base, get_async_session, AsyncSession
 from src.apps.FARPOST.schemas import UserSchema, AbsSchema, AbsActiveSchema, CookiesSchema
@@ -115,9 +115,7 @@ class User(Base):
             instance.login = schema.login
             instance.password = schema.password
         else:
-            instance = cls(
-                user_id=schema.user_id, login=schema.login, password=schema.password, tg_chat_id=None
-            )
+            instance = cls(user_id=schema.user_id, login=schema.login, password=schema.password, tg_chat_id=None)
             session.add(instance)
         await session.commit()
 
@@ -209,6 +207,8 @@ class AbsActive(Base):
     price_limitation: Mapped[float] = mapped_column(types.Float)
     date_creation: Mapped[datetime] = mapped_column(types.TIMESTAMP)
     date_closing: Mapped[datetime] = mapped_column(types.TIMESTAMP, nullable=True)
+    start_time: Mapped[Time] = mapped_column(types.Time, nullable=False, default=time(8, 0))
+    end_time: Mapped[Time] = mapped_column(types.Time, nullable=False, default=time(18, 0))
 
     # Relationships
     abs: Mapped["Abs"] = relationship("Abs", back_populates="abs_actives")
@@ -225,6 +225,8 @@ class AbsActive(Base):
             price_limitation=self.price_limitation,
             date_creation=self.date_creation,
             date_closing=self.date_closing,
+            start_time=self.start_time,
+            end_time=self.end_time,
         )
 
     @classmethod

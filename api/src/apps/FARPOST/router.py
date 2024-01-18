@@ -8,7 +8,7 @@ import requests
 from typing import List, Union
 from uuid import uuid4, UUID
 import asyncio
-from datetime import datetime
+from datetime import datetime, time
 
 from src.settings.const import ConstHeader, ConstUrl
 from .schemas import (
@@ -186,6 +186,8 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
                 AbsActive.price_limitation,
                 AbsActive.date_creation,
                 AbsActive.date_closing,
+                AbsActive.start_time,
+                AbsActive.end_time,
             )
             .join(Abs, Abs.abs_id == AbsActive.abs_id)
             .filter(AbsActive.date_closing.is_(None))
@@ -207,6 +209,8 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
                 price_limitation=i[11],
                 date_creation=i[12],
                 date_closing=i[13],
+                start_time=i[14],
+                end_time=i[15],
             )
             for i in data
         ]
@@ -261,6 +265,8 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                     AbsActive.price_limitation,
                     AbsActive.date_creation,
                     AbsActive.date_closing,
+                    AbsActive.start_time,
+                    AbsActive.end_time,
                 )
                 .join(Abs, Abs.abs_id == AbsActive.abs_id)
                 .filter(Abs.user_id == user.user_id)
@@ -283,6 +289,8 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                     price_limitation=i[11],
                     date_creation=i[12],
                     date_closing=i[13],
+                    start_time=i[14],
+                    end_time=i[15],
                 )
                 for i in data
             ]
@@ -321,6 +329,8 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
                     AbsActive.price_limitation,
                     AbsActive.date_creation,
                     AbsActive.date_closing,
+                    AbsActive.start_time,
+                    AbsActive.end_time,
                 )
                 .join(Abs, Abs.abs_id == AbsActive.abs_id)
                 .filter(Abs.user_id == user.user_id)
@@ -343,6 +353,8 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
                     price_limitation=i[11],
                     date_creation=i[12],
                     date_closing=i[13],
+                    start_time=i[14],
+                    end_time=i[15],
                 )
                 for i in data
             ]
@@ -352,7 +364,9 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
 
 
 @router.get("/creact_abs_active", tags=["Приложение"], summary='Создание "Работающий записи"')
-async def creact_abs_active(user_login: str, abs_id: int, position: int, price_limitation: float) -> AbsActiveSchema:
+async def creact_abs_active(
+    user_login: str, abs_id: int, position: int, price_limitation: float, start_time: time, end_time: time
+) -> AbsActiveSchema:
     """
     Создание новой записи для отслеживания
     """
@@ -378,6 +392,8 @@ async def creact_abs_active(user_login: str, abs_id: int, position: int, price_l
                     price_limitation=price_limitation,
                     date_creation=datetime.now(),
                     date_closing=None,
+                    start_time=start_time,
+                    end_time=end_time,
                 )
                 await async_add_data(AbsActive, new_abs_active)
                 return new_abs_active
