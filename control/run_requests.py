@@ -8,7 +8,8 @@ import os
 from typing import Union
 from uuid import UUID
 import re
-from datetime import datetime, time
+from datetime import datetime
+from datetime import time as dt_time
 
 API_HOST = os.environ.get("API_HOST")
 API_PORT = os.environ.get("API_PORT")
@@ -187,8 +188,8 @@ def checking_position() -> None:
 
     for items in list_items_parse:
         datetime_now = datetime.now()
-        time_now = time(hour=datetime_now.hour, minute=datetime_now.minute)
-        if time.fromisoformat(items.get("start_time")) < time_now and time.fromisoformat(items.get("end_time")) < time_now:
+        time_now = dt_time(hour=datetime_now.hour, minute=datetime_now.minute)
+        if dt_time.fromisoformat(items.get("start_time")) < time_now and dt_time.fromisoformat(items.get("end_time")) > time_now:
             common_headers = {
                 "Host": "www.farpost.ru",
                 "Cache-Control": "max-age=0",
