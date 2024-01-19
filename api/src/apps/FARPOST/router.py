@@ -562,7 +562,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
 
     response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
     tree_csrf: html.HtmlElement = html.fromstring(response.text)
-    print(tree_csrf)
+    print(response.text)
     csrf_token_value: str = tree_csrf.xpath("""//*[@id="csrfToken"]/@value""")[-1]
     data: dict = {
         "csrfToken": csrf_token_value,
