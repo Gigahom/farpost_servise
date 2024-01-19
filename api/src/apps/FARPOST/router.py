@@ -9,6 +9,7 @@ from typing import List, Union
 from uuid import uuid4, UUID
 import asyncio
 from datetime import datetime, time
+from time import sleep
 
 from src.settings.const import ConstHeader, ConstUrl
 from .schemas import (
@@ -556,11 +557,13 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
     headers1: dict = common_headers.copy()
     headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
     session.get(ConstUrl.URL1.value, params=params1, headers=headers1, cookies=cookies)
-
+    sleep(0.1)
+    
     params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
     headers2: dict = common_headers.copy()
     headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
     session.get(ConstUrl.URL2.value, params=params2, headers=headers2)
+    sleep(0.1)
 
     response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
     tree_csrf: html.HtmlElement = html.fromstring(response.text)
