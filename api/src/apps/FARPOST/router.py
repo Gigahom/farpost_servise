@@ -548,7 +548,8 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
 
     session = requests.Session()
     common_headers: dict = {i.custom_name: i.value for i in ConstHeader}
-    print(common_headers)
+    common_headers["_ga_G0RWKN84TQ"] = "GS1.1.1705675535.1.0.1705675535.60.0.0"
+    common_headers["_ga"] = "GA1.1.1205983125.1705675536"
 
     params1: dict = {"u": "/sign?return=%252F"}
     headers1: dict = common_headers.copy()
