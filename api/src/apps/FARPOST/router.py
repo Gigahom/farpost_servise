@@ -577,6 +577,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
 
     response = session.post(ConstUrl.URL_LOGIN.value, data=data)
     print(requests.utils.dict_from_cookiejar(session.cookies))
+    print(response.cookies)
     if requests.utils.dict_from_cookiejar(session.cookies).get("login"):
         uuid_user: UUID = uuid4()
         user_data: UserSchema = UserSchema(user_id=uuid_user, login=login, password=password)
