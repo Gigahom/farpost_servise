@@ -549,14 +549,11 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
 
     session = requests.Session()
     common_headers: dict = {i.custom_name: i.value for i in ConstHeader}
-    cookies = {}
-    cookies["_ga_G0RWKN84TQ"] = "GS1.1.1705675535.1.0.1705675535.60.0.0"
-    cookies["_ga"] = "GA1.1.1205983125.1705675536"
 
     params1: dict = {"u": "/sign?return=%252F"}
     headers1: dict = common_headers.copy()
     headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-    session.get(ConstUrl.URL1.value, params=params1, headers=headers1, cookies=cookies)
+    session.get(ConstUrl.URL1.value, params=params1, headers=headers1)
     sleep(0.1)
     
     params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
