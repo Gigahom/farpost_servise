@@ -53,17 +53,6 @@ services:
 #      - TG_API_KEY=${TG_API_KEY}
 #    depends_on:
 #      - api
-  
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - frontend
-      - api
 
 volumes:
   data_postgres:
