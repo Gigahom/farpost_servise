@@ -368,8 +368,9 @@ class ViewData(ContentAbstract):
                                 ],
                                 rows=[
                                     self.creact_row(i, "All")
-                                    for i in requests.get(
-                                        RequstsApi.Items.value + f"""?user_login={self.login}"""
+                                    for i in requests.post(
+                                        RequstsApi.Updata.value + f"""?user_login={self.login}""",
+                                        json=self.master.headers_cookies
                                     ).json()
                                 ],
                             ),

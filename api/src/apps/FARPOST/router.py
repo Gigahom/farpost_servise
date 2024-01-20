@@ -563,7 +563,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
     headers2: dict = common_headers.copy()
     headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
     session.get(ConstUrl.URL2.value, params=params2, headers=headers2)
-    sleep(0.1)
+    
 
     response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
     tree_csrf: html.HtmlElement = html.fromstring(response.text)
