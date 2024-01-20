@@ -567,7 +567,6 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
 
     response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
     tree_csrf: html.HtmlElement = html.fromstring(response.text)
-    print(response.text)
     csrf_token_value: str = tree_csrf.xpath("""//*[@id="csrfToken"]/@value""")[-1]
     data: dict = {
         "csrfToken": csrf_token_value,
@@ -577,7 +576,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
     }
 
     response = session.post(ConstUrl.URL_LOGIN.value, data=data)
-
+    print(requests.utils.dict_from_cookiejar(session.cookies))
     if requests.utils.dict_from_cookiejar(session.cookies).get("login"):
         uuid_user: UUID = uuid4()
         user_data: UserSchema = UserSchema(user_id=uuid_user, login=login, password=password)
