@@ -4,6 +4,7 @@ from sqlalchemy.future import select
 from sqlalchemy import update
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from pypasser import reCaptchaV2
 
 from lxml import html
 import requests
@@ -126,7 +127,10 @@ async def update_cookies(user: UserSchema) -> CookiesSchema:
         connection_type="wifi",
     )
     driver.get(ConstUrl.URL_SING.value)
-
+    try:
+        is_checked = reCaptchaV2(driver=driver, play=False)
+    except:
+        pass
     tree_csrf: html.HtmlElement = html.fromstring(driver.page_source)
     cookies = {}
     for i in driver.get_cookies():
@@ -574,7 +578,10 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         connection_type="wifi",
     )
     driver.get(ConstUrl.URL_SING.value)
-
+    try:
+        is_checked = reCaptchaV2(driver=driver, play=False)
+    except:
+        pass
     tree_csrf: html.HtmlElement = html.fromstring(driver.page_source)
     cookies = {}
     for i in driver.get_cookies():
