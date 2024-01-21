@@ -1,3 +1,5 @@
 .venv/
+.env
 data_postgres/
 control/log/*
+nginx/farpost-boost.ru/*
