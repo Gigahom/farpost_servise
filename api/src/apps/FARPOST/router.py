@@ -582,6 +582,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         is_checked = reCaptchaV2(driver=driver, play=False)
     except:
         pass
+    print(driver.page_source)
     tree_csrf: html.HtmlElement = html.fromstring(driver.page_source)
     cookies = {}
     for i in driver.get_cookies():
