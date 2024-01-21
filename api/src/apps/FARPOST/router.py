@@ -2,6 +2,8 @@ from fastapi import APIRouter, Form, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 from lxml import html
 import requests
@@ -9,9 +11,9 @@ from typing import List, Union
 from uuid import uuid4, UUID
 import asyncio
 from datetime import datetime, time
-from time import sleep
 
-from src.settings.const import ConstHeader, ConstUrl
+
+from src.settings.const import ConstUrl
 from .schemas import (
     ResponseLoginSchema,
     HeadersSchema,
@@ -108,21 +110,28 @@ async def get_abs_info(abs_id: int) -> AbsSchema:
 
 
 async def update_cookies(user: UserSchema) -> CookiesSchema:
-    session = requests.Session()
-    common_headers: dict = {i.custom_name: i.value for i in ConstHeader}
+    options = Options()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--headless")
+    options.add_argument("--start-maximized")
 
-    params1: dict = {"u": "/sign?return=%252F"}
-    headers1: dict = common_headers.copy()
-    headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-    session.get(ConstUrl.URL1.value, params=params1, headers=headers1)
+    driver = webdriver.Chrome(options=options)
+    driver.set_network_conditions(
+        offline=False,
+        latency=5,
+        download_throughput=500 * 1024,
+        upload_throughput=500 * 1024,
+        connection_type="wifi",
+    )
+    driver.get(ConstUrl.URL_SING.value)
 
-    params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
-    headers2: dict = common_headers.copy()
-    headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-    session.get(ConstUrl.URL2.value, params=params2, headers=headers2)
+    tree_csrf: html.HtmlElement = html.fromstring(driver.page_source)
+    cookies = {}
+    for i in driver.get_cookies():
+        cookies[i["name"]] = i["value"]
 
-    response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
-    tree_csrf: html.HtmlElement = html.fromstring(response.text)
     csrf_token_value: str = tree_csrf.xpath("""//*[@id="csrfToken"]/@value""")[-1]
     data: dict = {
         "csrfToken": csrf_token_value,
@@ -131,10 +140,12 @@ async def update_cookies(user: UserSchema) -> CookiesSchema:
         "password": f"{user.password}",
     }
 
-    response = session.post(ConstUrl.URL_LOGIN.value, data=data)
-
-    if requests.utils.dict_from_cookiejar(session.cookies).get("login"):
-        cookies_dict: CookiesSchema = CookiesSchema(**requests.utils.dict_from_cookiejar(session.cookies))
+    response = requests.post(ConstUrl.URL_LOGIN.value, data=data, cookies=cookies)
+    driver.quit()
+    if requests.utils.dict_from_cookiejar(response.cookies).get("boobs"):
+        cookies = requests.utils.dict_from_cookiejar(response.cookies)
+        cookies["login"] = user.login
+        cookies_dict: CookiesSchema = CookiesSchema(**cookies)
         await async_add_data(Cookies, cookies_dict)
         return cookies_dict
     else:
@@ -547,23 +558,28 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
     Запрос на авторизацию
     """
 
-    session = requests.Session()
-    common_headers: dict = {i.custom_name: i.value for i in ConstHeader}
+    options = Options()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--headless")
+    options.add_argument("--start-maximized")
 
-    params1: dict = {"u": "/sign?return=%252F"}
-    headers1: dict = common_headers.copy()
-    headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-    session.get(ConstUrl.URL1.value, params=params1, headers=headers1)
-    sleep(0.1)
-    
-    params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
-    headers2: dict = common_headers.copy()
-    headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-    session.get(ConstUrl.URL2.value, params=params2, headers=headers2)
-    
+    driver = webdriver.Chrome(options=options)
+    driver.set_network_conditions(
+        offline=False,
+        latency=5,
+        download_throughput=500 * 1024,
+        upload_throughput=500 * 1024,
+        connection_type="wifi",
+    )
+    driver.get(ConstUrl.URL_SING.value)
 
-    response: requests.models.Response = session.get(ConstUrl.URL_SING.value)
-    tree_csrf: html.HtmlElement = html.fromstring(response.text)
+    tree_csrf: html.HtmlElement = html.fromstring(driver.page_source)
+    cookies = {}
+    for i in driver.get_cookies():
+        cookies[i["name"]] = i["value"]
+
     csrf_token_value: str = tree_csrf.xpath("""//*[@id="csrfToken"]/@value""")[-1]
     data: dict = {
         "csrfToken": csrf_token_value,
@@ -572,15 +588,17 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         "password": f"{password}",
     }
 
-    response = session.post(ConstUrl.URL_LOGIN.value, data=data)
-    print(requests.utils.dict_from_cookiejar(session.cookies))
-    print(response.cookies)
-    if requests.utils.dict_from_cookiejar(session.cookies).get("login"):
+    response = requests.post(ConstUrl.URL_LOGIN.value, data=data, cookies=cookies)
+
+    driver.quit()
+    if requests.utils.dict_from_cookiejar(response.cookies).get("boobs"):
+        cookies = requests.utils.dict_from_cookiejar(response.cookies)
+        cookies["login"] = login
         uuid_user: UUID = uuid4()
         user_data: UserSchema = UserSchema(user_id=uuid_user, login=login, password=password)
         asyncio.run(async_add_data(User, user_data))
         headers_dict: HeadersSchema = HeadersSchema(**dict(response.headers))
-        cookies_dict: CookiesSchema = CookiesSchema(**requests.utils.dict_from_cookiejar(session.cookies))
+        cookies_dict: CookiesSchema = CookiesSchema(**cookies)
         return ResponseLoginSchema(headers=headers_dict, cookies=cookies_dict)
     else:
         raise HTTPException(

@@ -3,6 +3,7 @@ from typing import Optional, Union
 from uuid import UUID
 from datetime import datetime, time
 
+
 class UserSchema(BaseModel):
     """
     Схема для выгрузки пользователя
@@ -91,6 +92,7 @@ class WalletSchema(BaseModel):
     """Схема для суммы на кошельку"""
 
     wallet: float
+
 
 class TelegramSchema(BaseModel):
     """Схема для id телеграм чат пользователя"""
