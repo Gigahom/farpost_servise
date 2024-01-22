@@ -3,6 +3,8 @@ from typing import Optional, Union
 from uuid import UUID
 from datetime import datetime, time
 
+class TextSchema(BaseModel):
+    text: str
 
 class UserSchema(BaseModel):
     """
@@ -74,18 +76,18 @@ class HeadersSchema(BaseModel):
     Схема заголовков farpost в ответе после автозирации
     """
 
-    Server: str
-    Date: str
-    Content_Type: str = Field(..., alias="Content-Type")
-    Transfer_Encoding: str = Field(..., alias="Transfer-Encoding")
-    Connection: str
-    Keep_Alive: str = Field(..., alias="Keep-Alive")
-    Vary: str
-    Set_Cookie: str = Field(..., alias="Set-Cookie")
-    Content_Security_Policy: str = Field(..., alias="Content-Security-Policy")
-    Cache_control: str = Field(..., alias="Cache-control")
-    Accept_CH: str = Field(..., alias="Accept-CH")
-    Content_Encoding: str = Field(..., alias="Content-Encoding")
+    Server: Optional[str] = None
+    Date: Optional[str] = None
+    Content_Type: Optional[str] = Field(default=None, alias="Content-Type")
+    Transfer_Encoding: Optional[str] = Field(default=None, alias="Transfer-Encoding")
+    Connection: Optional[str] = None
+    Keep_Alive: Optional[str] = Field(default=None, alias="Keep-Alive")
+    Vary: Optional[str] = None
+    Set_Cookie: Optional[str] = Field(default=None, alias="Set-Cookie")
+    Content_Security_Policy: Optional[str] = Field(default=None, alias="Content-Security-Policy")
+    Cache_control: Optional[str] = Field(default=None, alias="Cache-control")
+    Accept_CH: Optional[str] = Field(default=None, alias="Accept-CH")
+    Content_Encoding: Optional[str] = Field(default=None, alias="Content-Encoding")
 
 
 class WalletSchema(BaseModel):
@@ -109,7 +111,7 @@ class CookiesSchema(BaseModel):
     boobs: str
     pony: str
     login: str
-    protected_deals_top_line: str = Field(..., alias="protected_deals_top_line")
+    protected_deals_top_line: Optional[str] = Field(default="0", alias="protected_deals_top_line")
 
 
 class ResponseLoginSchema(BaseModel):

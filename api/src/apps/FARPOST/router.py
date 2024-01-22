@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, HTTPException, Depends
+from fastapi import APIRouter, Form, HTTPException, Depends, Body 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update
@@ -26,6 +26,7 @@ from .schemas import (
     CookiesSchema,
     WalletSchema,
     TelegramSchema,
+    TextSchema
 )
 
 from src.apps.models import User, AbsActive, Abs, Cookies
@@ -577,7 +578,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         upload_throughput=500 * 1024,
         connection_type="wifi",
     )
-    driver.get("https://eo1e0e9jbkfk3fa.m.pipedream.net")
+    driver.get(ConstUrl.URL_SING.value)
     try:
         is_checked = reCaptchaV2(driver=driver, play=False)
     except:
@@ -595,7 +596,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         "sign": f"{login}",
         "password": f"{password}",
     }
-    
+
     response = requests.post(ConstUrl.URL_LOGIN.value, data=data, cookies=cookies)
 
     driver.quit()
@@ -612,4 +613,32 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         raise HTTPException(
             status_code=401,
             detail="Ошибка при вводе логина или пароля, если все данные верны то возможно farpost просит подтверждение через sms код",
+        )
+
+
+@router.post("/login_burp", tags=["Приложение", "Система контроля"], summary="Аваторизация, через burp")
+def login_burp(text_headers: TextSchema) -> ResponseLoginSchema:
+    lines = text_headers.text.split("\n")
+    headers = {}
+    for line in lines:
+        if ": " in line:
+            key, value = line.split(": ", 1)
+            headers[key] = value
+    
+    cookies = {i.split("=")[0] : i.split("=")[1] for i in headers["Cookie"].split("; ") }
+    del headers["Cookie"]
+    del headers["Host"]
+    
+    headers_dict: HeadersSchema = HeadersSchema(**headers)
+    cookies_dict: CookiesSchema = CookiesSchema(**cookies)
+    if cookies_dict.login:
+        uuid_user: UUID = uuid4()
+        user_data: UserSchema = UserSchema(user_id=uuid_user, login=cookies_dict.login, password="1111")
+        asyncio.run(async_add_data(User, user_data))
+        asyncio.run(async_add_data(Cookies, cookies_dict))
+        return ResponseLoginSchema(headers=headers_dict, cookies=cookies_dict)
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Вы не передали логин",
         )

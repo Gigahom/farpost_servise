@@ -25,3 +25,4 @@ class RequstsApi(Enum):
     Wallet = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_wallet_user?login="  # GET
     UpdataTg = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_user_tg_chat_id?"  # GET
     GetTg = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_telegram_chat_id?login="  # GET
+    LoginBurp = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/login_burp"

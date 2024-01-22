@@ -15,8 +15,12 @@ class Login(ContentAbstract):
         self.master = master
         self.page = page
 
-        self.login = ft.TextField(label="Логин ( 71234567890 )")
-        self.password = ft.TextField(label="Пароль", password=True, can_reveal_password=True)
+        self.login = ft.TextField(
+            label="Введите всю информацию из burp",
+            multiline=True,
+            min_lines=15,
+            width=800,
+        )
         self.sing = ft.ElevatedButton(text="Войти", on_click=self.sing_click)
         self.load = ft.Row(
             [],
@@ -29,11 +33,6 @@ class Login(ContentAbstract):
                 [
                     ft.Row(
                         [self.login],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        visible=True,
-                    ),
-                    ft.Row(
-                        [self.password],
                         alignment=ft.MainAxisAlignment.CENTER,
                         visible=True,
                     ),
@@ -53,10 +52,10 @@ class Login(ContentAbstract):
         """
         Запрос на заголовки и куки для работы внутри приложения
         """
-
+        
         self.load.controls.append(ft.ProgressBar(width=400, color="amber", bgcolor="#eeeeee"))
         self.page.update()
-        data = requests.post(RequstsApi.Login.value, data={"login": self.login.value, "password": self.password.value})
+        data = requests.post(RequstsApi.LoginBurp.value, json={"text": self.login.value})
         if data.status_code == 200:
             self.master.headers_cookies = data.json()
             self.master.new_win(ViewData)
