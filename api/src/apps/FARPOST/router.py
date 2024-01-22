@@ -475,7 +475,7 @@ async def get_items(user_login: str, session: AsyncSession = Depends(get_async_s
     if len(list_abs) > 0:
         return list_abs
     else:
-        raise HTTPException(status_code=404, detail="AbsActive record not found")
+        raise []
 
 
 @router.post(
