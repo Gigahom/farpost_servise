@@ -232,5 +232,6 @@ def checking_position() -> None:
 if is_api_available(get_active_data_close_none):
     while True:
         checking_position()
+        time.sleep(5)
 else:
     logger.error("API недоступно.")
