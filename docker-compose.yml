@@ -41,18 +41,18 @@ services:
     volumes:
       - ./data_postgres:/var/lib/postgresql/data
 
-  #  control:
-  #    build:
-  #      context: ./control
-  #      dockerfile: Dockerfile
-  #    volumes:
-  #      - ./control:/app
-  #    environment:
-  #      - API_HOST=${API_HOST}
-  #      - API_PORT=${API_PORT}
-  #      - TG_API_KEY=${TG_API_KEY}
-  #    depends_on:
-  #      - api
+  control:
+    build:
+      context: ./control
+      dockerfile: Dockerfile
+    volumes:
+      - ./control:/app
+    environment:
+      - API_HOST=${API_HOST}
+      - API_PORT=${API_PORT}
+      - TG_API_KEY=${TG_API_KEY}
+    depends_on:
+      - api
 
   nginx:
     build:
