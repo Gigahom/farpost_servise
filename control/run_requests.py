@@ -14,6 +14,7 @@ from datetime import time as dt_time
 API_HOST = os.environ.get("API_HOST")
 API_PORT = os.environ.get("API_PORT")
 TG_API_KEY = os.environ.get("TG_API_KEY")
+TG_API_KEY_2 = os.environ.get("TG_API_KEY_2")
 
 PREF_FARPOST = "/api/v1/farpost"
 
@@ -43,6 +44,17 @@ def send_telegram_message(chat_id: int, message: str):
     """
     if chat_id:
         url = f"https://api.telegram.org/bot{TG_API_KEY}/sendMessage"
+        payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
+        response = requests.post(url, json=payload)
+        return response.json()
+
+
+def send_telegram_message_bot_2(chat_id: int, message: str):
+    """
+    Отправляет сообщение пользователю в Telegram.
+    """
+    if chat_id:
+        url = f"https://api.telegram.org/bot{TG_API_KEY_2}/sendMessage"
         payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
         response = requests.post(url, json=payload)
         return response.json()
@@ -107,34 +119,64 @@ def find_item_number(data: dict, id_item: int) -> int | None:
     """
     Возвращает номер элемента, соответствующего заданному id_item, или None, если элемент не найден.
     """
+
     for number, item in data.items():
         if item.get("abs_id") == id_item:
             return int(number)
     return None
 
 
-def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, item: dict) -> Union[None, float, int]:
+def control_competitors(abs_id: int, dict_items: dict) -> Union[None, float, int]:
+    if find_item_number(abs_id) > find_item_number(79363918):
+        return None
+
+    competitor = dict_items.get(f"{find_item_number(79363918)}")
+
+    if competitor:
+        if competitor.get("price") < 9999:
+            print_up = competitor.get("price") + 1
+        else:
+            print_up = 10
+
+    return print_up
+
+
+def check_position(
+    position: int, dict_items: dict, abs_id: int, chat_id: int, item: dict, limit: int
+) -> Union[None, float, int]:
     """Получение цены за позицию"""
+    competitor = control_competitors(abs_id=abs_id, dict_items=dict_items)
+    if competitor:
+        subcategories_link = "https://www.farpost.ru/" + item.get("attr")
+        message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> в режиме обгона конкурента в категории<a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
+        send_telegram_message(chat_id=chat_id, message=message)
+        return competitor
+    
+    position_item = dict_items.get(f"{position}")
+    position_item_last = dict_items.get(f"{position-1}")
+    print_up = None
+    if position_item:
+        if position_item.get("abs_id") != abs_id:
+            if position_item.get("price") < 9999:
+                print_up = position_item.get("price") + 1
+            else:
+                print_up = 10
+        else:
+            if position_item_last.get("price") < 9999:
+                print_up = position_item_last.get("price") + 1
+            else:
+                print_up = 10
 
     position_now = find_item_number(dict_items, abs_id)
     if position_now:
         if position_now > position:
-            subcategories_link = "https://www.farpost.ru/" + item.get("attr")
-            message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
-            logger.debug(f"{abs_id} | {position_now} | {position}")
-            send_telegram_message(chat_id=chat_id, message=message)
-
-    position_item = dict_items.get(f"{position}")
-    if position_item:
-        if position_item.get("abs_id") != abs_id:
-            if position_item.get("price") < 9999:
-                return position_item.get("price") + 1
-            else:
-                return 10
-        else:
-            return None
-    else:
-        return None
+            if print_up:
+                if print_up <= limit:
+                    subcategories_link = "https://www.farpost.ru/" + item.get("attr")
+                    message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
+                    logger.debug(f"{abs_id} | {position_now} | {position}")
+                    send_telegram_message(chat_id=chat_id, message=message)
+    return print_up
 
 
 def up_abs(
@@ -183,7 +225,7 @@ def checking_position() -> None:
             "link": i["link"],
             "start_time": i["start_time"],
             "end_time": i["end_time"],
-            "subcategories" : i["subcategories"]
+            "subcategories": i["subcategories"],
         }
         for i in requests.get(url=get_active_data_close_none).json()
     ]
@@ -221,14 +263,16 @@ def checking_position() -> None:
             chat_id = requests.get(get_telegram_chat_id + user.get("login")).json()["telegram_id"]
             html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
 
-            tree: html.HtmlElement = html.fromstring(html_code)
-            title: str = tree.xpath("/html/head/title/text()")
+            # tree: html.HtmlElement = html.fromstring(html_code)
+            # title: str = tree.xpath("/html/head/title/text()")
 
-            logger.error("Название раздела для сбора : " + ",".join(title))
+            # logger.error("Название раздела для сбора : " + ",".join(title))
 
             dict_data = parse_html_text(html_code)
 
-            price_up = check_position(items.get("position"), dict_data, items.get("abs_id"), chat_id, items)
+            price_up = check_position(
+                items.get("position"), dict_data, items.get("abs_id"), chat_id, items, items.get("price_limitation")
+            )
             if price_up:
                 if price_up < items.get("price_limitation"):
                     up_abs(
@@ -239,6 +283,11 @@ def checking_position() -> None:
                         cookies,
                         chat_id,
                         items,
+                    )
+                else:
+                    send_telegram_message_bot_2(
+                        chat_id,
+                        f"""Приклеенное объявление <a href='{items.get("link")}'>{items.get("name_farpost")}</a> не может подняться увеличте лимит до {price_up*2} !!!!!""",
                     )
             else:
                 pass
