@@ -77,7 +77,7 @@ async def get_wallet_user(login: str) -> WalletSchema:
     wallet: float = float(
         tree_wallet.xpath(
             """//*[contains(concat( " ", @class, " " ), concat( " ", "personalNavLine__balance", " " ))]/text()"""
-        )[0]
+        )[0].replace(" ","").replace("\n","").replace("\n","").replace("\t","")
     )
 
     return WalletSchema(wallet=wallet)
@@ -146,6 +146,7 @@ async def update_cookies(user: UserSchema) -> CookiesSchema:
     }
 
     response = requests.post(ConstUrl.URL_LOGIN.value, data=data, cookies=cookies)
+    
     driver.quit()
     if requests.utils.dict_from_cookiejar(response.cookies).get("boobs"):
         cookies = requests.utils.dict_from_cookiejar(response.cookies)
@@ -633,7 +634,7 @@ def login_burp(text_headers: TextSchema) -> ResponseLoginSchema:
     cookies_dict: CookiesSchema = CookiesSchema(**cookies)
     if cookies_dict.login:
         uuid_user: UUID = uuid4()
-        user_data: UserSchema = UserSchema(user_id=uuid_user, login=cookies_dict.login, password="1111")
+        user_data: UserSchema = UserSchema(user_id=uuid_user, login=cookies_dict.login, password="dkez4mye")
         asyncio.run(async_add_data(User, user_data))
         asyncio.run(async_add_data(Cookies, cookies_dict))
         return ResponseLoginSchema(headers=headers_dict, cookies=cookies_dict)

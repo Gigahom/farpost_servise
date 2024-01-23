@@ -25,16 +25,16 @@ get_telegram_chat_id = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_telegram
 
 logger.add("log/log_control.log", rotation="2 MB")
 
-# scheduler = BackgroundScheduler(timezone="Asia/Vladivostok")
+scheduler = BackgroundScheduler(timezone="Asia/Vladivostok")
 
 
-# def prompt() -> None:
-#     requests.get(update_cookies)
-#     logger.info("Куки обновлены для всех пользователей")
+def prompt() -> None:
+    requests.get(update_cookies)
+    logger.info("Куки обновлены для всех пользователей")
 
 
-# scheduler.add_job(prompt, "interval", seconds=86400)
-# scheduler.start()
+scheduler.add_job(prompt, "interval", seconds=10800)
+scheduler.start()
 
 
 def send_telegram_message(chat_id: int, message: str):
@@ -121,6 +121,7 @@ def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, i
         if position_now > position:
             subcategories_link = "https://www.farpost.ru/" + item.get("attr")
             message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
+            logger.debug(f"{abs_id} | {position_now} | {position}")
             send_telegram_message(chat_id=chat_id, message=message)
 
     position_item = dict_items.get(f"{position}")
@@ -182,6 +183,7 @@ def checking_position() -> None:
             "link": i["link"],
             "start_time": i["start_time"],
             "end_time": i["end_time"],
+            "subcategories" : i["subcategories"]
         }
         for i in requests.get(url=get_active_data_close_none).json()
     ]
@@ -193,15 +195,36 @@ def checking_position() -> None:
             dt_time.fromisoformat(items.get("start_time")) < time_now
             and dt_time.fromisoformat(items.get("end_time")) > time_now
         ):
+            common_headers = {
+                "Host": "www.farpost.ru",
+                "Cache-Control": "max-age=0",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Sec_Fetch_Site": "same-origin",
+                "Sec_Fetch_Mode": "navigate",
+            }
+            session = requests.Session()
+
+            params1: dict = {"u": "/sign?return=%252F"}
+            headers1: dict = common_headers.copy()
+            headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+            session.get("https://www.farpost.ru/verify", params=params1, headers=headers1)
+
+            params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
+            headers2: dict = common_headers.copy()
+            headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+            session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
+
             user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
             cookies = requests.get(get_cookies_with_user + user.get("login")).json()
             chat_id = requests.get(get_telegram_chat_id + user.get("login")).json()["telegram_id"]
-            html_code = requests.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
+            html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
 
             tree: html.HtmlElement = html.fromstring(html_code)
             title: str = tree.xpath("/html/head/title/text()")
 
-            logger.debug("Название раздела для сбора : " + ",".join(title))
+            logger.error("Название раздела для сбора : " + ",".join(title))
 
             dict_data = parse_html_text(html_code)
 
@@ -232,6 +255,5 @@ def checking_position() -> None:
 if is_api_available(get_active_data_close_none):
     while True:
         checking_position()
-        time.sleep(5)
 else:
     logger.error("API недоступно.")
