@@ -127,7 +127,7 @@ def find_item_number(data: dict, id_item: int) -> int | None:
 
 
 def control_competitors(abs_id: int, dict_items: dict) -> Union[None, float, int]:
-    if find_item_number(abs_id) > find_item_number(79363918):
+    if find_item_number(dict_items, abs_id) < find_item_number(dict_items, 79363918):
         return None
 
     competitor = dict_items.get(f"{find_item_number(79363918)}")
@@ -151,7 +151,7 @@ def check_position(
         message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> в режиме обгона конкурента в категории<a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
         send_telegram_message(chat_id=chat_id, message=message)
         return competitor
-    
+
     position_item = dict_items.get(f"{position}")
     position_item_last = dict_items.get(f"{position-1}")
     print_up = None
