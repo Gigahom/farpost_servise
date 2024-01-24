@@ -127,8 +127,9 @@ def find_item_number(data: dict, id_item: int) -> int | None:
 
 
 def control_competitors(abs_id: int, dict_items: dict) -> Union[None, float, int]:
-    if find_item_number(dict_items, abs_id) < find_item_number(dict_items, 79363918):
-        return None
+    if find_item_number(dict_items, abs_id):
+        if find_item_number(dict_items, abs_id) < find_item_number(dict_items, 79363918):
+            return None
 
     competitor = dict_items.get(f"{find_item_number(79363918)}")
 
