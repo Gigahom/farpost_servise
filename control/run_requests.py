@@ -131,7 +131,7 @@ def control_competitors(abs_id: int, dict_items: dict) -> Union[None, float, int
         if find_item_number(dict_items, abs_id) < find_item_number(dict_items, 79363918):
             return None
 
-    competitor = dict_items.get(f"{find_item_number(79363918)}")
+    competitor = dict_items.get(f"{find_item_number(dict_items,79363918)}")
 
     if competitor:
         if competitor.get("price") < 9999:
