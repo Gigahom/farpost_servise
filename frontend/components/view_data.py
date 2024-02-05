@@ -7,6 +7,7 @@ from time import sleep
 from uuid import UUID
 from lxml import html
 from datetime import time
+from datetime import datetime
 
 from const.const import RequstsApi
 from components.abs_class import ContentAbstract, PagesAbstract, AlertDialogInput
@@ -20,6 +21,8 @@ class ViewData(ContentAbstract):
     def __init__(self, page: ft.Page, master: PagesAbstract):
         self.master = master
         self.page = page
+
+        self.sort = True
 
         if isinstance(self.master.headers_cookies, dict) and "cookies" in self.master.headers_cookies:
             cookies = self.master.headers_cookies["cookies"]
@@ -60,12 +63,6 @@ class ViewData(ContentAbstract):
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER,
                             ),
-                            ft.Row(
-                                controls=[
-                                    ft.ElevatedButton(text="Выйти", on_click=self.out),
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                            ),
                         ],
                         alignment=ft.MainAxisAlignment.CENTER,
                     ),
@@ -87,6 +84,10 @@ class ViewData(ContentAbstract):
                                 columns=[
                                     ft.DataColumn(ft.Text("Настройки")),
                                     ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(
+                                        ft.Text("Просмотры"),
+                                        on_sort=self.sort_viewer,
+                                    ),
                                     ft.DataColumn(ft.Text("Город")),
                                     ft.DataColumn(ft.Text("Категория")),
                                     ft.DataColumn(ft.Text("Подкатегория")),
@@ -208,13 +209,25 @@ class ViewData(ContentAbstract):
             ],
             expand=1,
         )
-        
+
         wallet_value: str = str(requests.get(RequstsApi.Wallet.value + self.login).json()["wallet"])
         self.wallet_value = ft.Text(value=wallet_value, size=15)
         self.wallet = ft.Row(
-            controls=[self.wallet_value, ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_wallet)]
+            controls=[
+                self.wallet_value,
+                ft.IconButton(icon=ft.icons.AUTORENEW, on_click=self.update_wallet),
+                ft.Row(
+                    controls=[
+                        ft.ElevatedButton(text="Выйти", on_click=self.out),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+            ]
         )
-        
+
+        self.time_start = time(hour=0, minute=0)
+        self.time_end = time(hour=0, minute=0)
+
         self.time_picker_start = ft.TimePicker(
             confirm_text="Подтвердить",
             error_invalid_text="Time out of range",
@@ -223,7 +236,7 @@ class ViewData(ContentAbstract):
             cancel_text="Отменить",
             time_picker_entry_mode=ft.TimePickerEntryMode.INPUT_ONLY,
             hour_label_text="Часы",
-            minute_label_text="Минуты"
+            minute_label_text="Минуты",
         )
         self.time_picker_end = ft.TimePicker(
             confirm_text="Подтвердить",
@@ -233,18 +246,25 @@ class ViewData(ContentAbstract):
             cancel_text="Отменить",
             time_picker_entry_mode=ft.TimePickerEntryMode.INPUT_ONLY,
             hour_label_text="Часы",
-            minute_label_text="Минуты"
+            minute_label_text="Минуты",
         )
-        
+
         self.page.add(self.wallet)
         self.page.add(self.tab_menu)
-        
-    def change_time_start(self,e):
+
+    def sort_viewer(self, e):
+        self.tab_all_content.content.controls[1].controls[0].rows.sort(
+            key=lambda x: x.cells[e.column_index].content.value, reverse=not self.sort
+        )
+        self.sort = not self.sort
+        self.page.update()
+
+    def change_time_start(self, e):
         self.time_start = time(hour=self.time_picker_start.value.hour, minute=self.time_picker_start.value.minute)
-    
-    def change_time_end(self,e):
+
+    def change_time_end(self, e):
         self.time_end = time(hour=self.time_picker_end.value.hour, minute=self.time_picker_end.value.minute)
-        
+
     def open_time_start(self, e):
         self.page.add(self.time_picker_start)
         self.time_picker_start.open = True
@@ -254,7 +274,6 @@ class ViewData(ContentAbstract):
         self.page.add(self.time_picker_end)
         self.time_picker_end.open = True
         self.time_picker_end.update()
-        
 
     def update_tg(self, e):
         tg_chat_id = self.telegram_chat_id.value
@@ -263,9 +282,9 @@ class ViewData(ContentAbstract):
         self.telegram_chat_id.label = "Ваш chat_id : " + str(telegram_chat_id)
 
         self.page.update()
-    
+
     def open_video(self, e):
-        self.page.launch_url('https://lumpics.ru/how-find-out-chat-id-in-telegram/')
+        self.page.launch_url("https://lumpics.ru/how-find-out-chat-id-in-telegram/")
 
     def creact_row(self, data_row: dict, tab_name: str) -> ft.DataRow:
         """
@@ -286,6 +305,7 @@ class ViewData(ContentAbstract):
                         )
                     ),
                     ft.DataCell(ft.Text(data_row["name_farpost"])),
+                    ft.DataCell(ft.Text(data_row["viewer"])),
                     ft.DataCell(ft.Text(data_row["city_english"])),
                     ft.DataCell(ft.Text(data_row["categore"])),
                     ft.DataCell(ft.Text(data_row["subcategories"])),
@@ -361,6 +381,10 @@ class ViewData(ContentAbstract):
                                 columns=[
                                     ft.DataColumn(ft.Text("Настройки")),
                                     ft.DataColumn(ft.Text("Название")),
+                                    ft.DataColumn(
+                                        ft.Text("Просмотры"),
+                                        on_sort=self.sort_viewer,
+                                    ),
                                     ft.DataColumn(ft.Text("Город")),
                                     ft.DataColumn(ft.Text("Категория")),
                                     ft.DataColumn(ft.Text("Подкатегория")),
@@ -370,7 +394,7 @@ class ViewData(ContentAbstract):
                                     self.creact_row(i, "All")
                                     for i in requests.post(
                                         RequstsApi.Updata.value + f"""?user_login={self.login}""",
-                                        json=self.master.headers_cookies
+                                        json=self.master.headers_cookies,
                                     ).json()
                                 ],
                             ),
@@ -512,17 +536,11 @@ class ViewData(ContentAbstract):
         """Создание окна для сбора параметров"""
 
         price = self.get_top_one(abs_id)
-        
-        date_button_start = ft.ElevatedButton(
-            "Время от",
-            icon=ft.icons.TIME_TO_LEAVE,
-            on_click=self.open_time_start,
+
+        switch = ft.Switch(
+            adaptive=True, label="Выбрать время", value=False, on_change=lambda e: self.update_time(switch, e)
         )
-        date_button_end = ft.ElevatedButton(
-            "Время до",
-            icon=ft.icons.TIME_TO_LEAVE,
-            on_click=self.open_time_end,
-        )
+
         self.dlg = AlertDialogInput(
             abs_id=abs_id,
             modal=True,
@@ -541,15 +559,13 @@ class ViewData(ContentAbstract):
                         """,
                         size=20,
                     ),
+                    switch,
                     ft.Row(
-                        [
-                            date_button_start,
-                            date_button_end,
-                        ],
+                        [],
                     ),
                 ],
                 width=600,
-                height=300,
+                height=500,
             ),
             actions=[
                 ft.TextButton("Начать", on_click=self.creact_active),
@@ -568,6 +584,24 @@ class ViewData(ContentAbstract):
         self.dlg.open = False
         self.page.update()
 
+    def update_time(self, switch, e):
+        date_button_start = ft.ElevatedButton(
+            "Время от",
+            icon=ft.icons.TIME_TO_LEAVE,
+            on_click=self.open_time_start,
+        )
+        date_button_end = ft.ElevatedButton(
+            "Время до",
+            icon=ft.icons.TIME_TO_LEAVE,
+            on_click=self.open_time_end,
+        )
+        if switch.value:
+            self.dlg.content.controls[4].controls = [date_button_start, date_button_end]
+        else:
+            self.dlg.content.controls[4].controls = []
+
+        self.page.update()
+
     def creact_active(self, e) -> None:
         """Создание записи abs_active"""
 
@@ -575,9 +609,18 @@ class ViewData(ContentAbstract):
         abs_id: Union[UUID, int, None] = self.dlg.abs_id
         position: int = int(self.dlg.content.controls[0].value)
         price_limitation: float = float(self.dlg.content.controls[1].value)
+        all_time: str = str(bool(self.dlg.content.controls[3].value)).lower()
+        is_up: str = "true"
+        print(self.time_end)
+        try:
+            time_end = self.time_end
+            time_start = self.time_start
+        except:
+            time_end = time(hour=10, minute=20)
+            time_start = time(hour=10, minute=20)
         response = requests.get(
             RequstsApi.CreactAbsActive.value
-            + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}&start_time={self.time_start}&end_time={self.time_end}"
+            + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}&start_time={time_start}&end_time={time_end}&all_time={all_time}&is_up={is_up}"
         )
         self.update_data(1, 3)
         if response.status_code == 200:

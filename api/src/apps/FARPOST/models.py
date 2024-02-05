@@ -138,6 +138,7 @@ class Abs(Base):
     categore: Mapped[str] = mapped_column(String)
     subcategories: Mapped[str] = mapped_column(String)
     category_attribute: Mapped[str] = mapped_column(String)
+    viewer: Mapped[int] = mapped_column(Integer, default=0)
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="abses")
@@ -157,6 +158,7 @@ class Abs(Base):
             categore=self.categore,
             subcategories=self.subcategories,
             category_attribute=self.category_attribute,
+            viewer=self.viewer,
         )
 
     @classmethod
@@ -209,6 +211,8 @@ class AbsActive(Base):
     date_closing: Mapped[datetime] = mapped_column(types.TIMESTAMP, nullable=True)
     start_time: Mapped[Time] = mapped_column(types.Time, nullable=False, default=time(8, 0))
     end_time: Mapped[Time] = mapped_column(types.Time, nullable=False, default=time(18, 0))
+    all_time: Mapped[bool] = mapped_column(types.Boolean, default=False)
+    is_up: Mapped[bool] = mapped_column(types.Boolean, default=False)
 
     # Relationships
     abs: Mapped["Abs"] = relationship("Abs", back_populates="abs_actives")
@@ -227,6 +231,8 @@ class AbsActive(Base):
             date_closing=self.date_closing,
             start_time=self.start_time,
             end_time=self.end_time,
+            all_time=self.all_time,
+            is_up=self.is_up,
         )
 
     @classmethod

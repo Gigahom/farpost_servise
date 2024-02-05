@@ -3,8 +3,10 @@ from typing import Optional, Union
 from uuid import UUID
 from datetime import datetime, time
 
+
 class TextSchema(BaseModel):
     text: str
+
 
 class UserSchema(BaseModel):
     """
@@ -31,6 +33,7 @@ class AbsSchema(BaseModel):
     categore: str
     subcategories: str
     category_attribute: str
+    viewer: int
 
 
 class AbsActiveSchema(BaseModel):
@@ -46,6 +49,8 @@ class AbsActiveSchema(BaseModel):
     date_closing: Optional[datetime]
     start_time: time
     end_time: time
+    all_time: bool
+    is_up: bool
 
 
 class AbsActiveMergeSchema(BaseModel):
@@ -69,6 +74,8 @@ class AbsActiveMergeSchema(BaseModel):
     date_closing: Optional[datetime]
     start_time: time
     end_time: time
+    all_time: bool
+    is_up: bool
 
 
 class HeadersSchema(BaseModel):

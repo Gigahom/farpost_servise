@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, HTTPException, Depends, Body 
+from fastapi import APIRouter, Form, HTTPException, Depends, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update
@@ -26,7 +26,7 @@ from .schemas import (
     CookiesSchema,
     WalletSchema,
     TelegramSchema,
-    TextSchema
+    TextSchema,
 )
 
 from src.apps.models import User, AbsActive, Abs, Cookies
@@ -61,6 +61,16 @@ tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
 ]
 
 
+@router.get("/stop_tracking", tags=["Система контроля"], summary="Остановка связи с недостатком средст")
+async def stop_tracking(abs_active_id: UUID) -> AbsActiveSchema:
+    async with get_async_session() as session:
+        result = await session.execute(select(AbsActive).where(AbsActive.abs_active_id == abs_active_id))
+        abs_active = result.scalars().first()
+        abs_active.is_up = False
+        await AbsActive.save_from_schema(schema=abs_active.to_read_model(), session=session)
+        return abs_active.to_read_model()
+
+
 @router.get("/get_telegram_chat_id", tags=["Приложение"], summary="Получить телеграмм chat id пользователя")
 async def get_telegram_chat_id(login: str) -> TelegramSchema:
     async with get_async_session() as session:
@@ -77,7 +87,11 @@ async def get_wallet_user(login: str) -> WalletSchema:
     wallet: float = float(
         tree_wallet.xpath(
             """//*[contains(concat( " ", @class, " " ), concat( " ", "personalNavLine__balance", " " ))]/text()"""
-        )[0].replace(" ","").replace("\n","").replace("\n","").replace("\t","")
+        )[0]
+        .replace(" ", "")
+        .replace("\n", "")
+        .replace("\n", "")
+        .replace("\t", "")
     )
 
     return WalletSchema(wallet=wallet)
@@ -146,7 +160,7 @@ async def update_cookies(user: UserSchema) -> CookiesSchema:
     }
 
     response = requests.post(ConstUrl.URL_LOGIN.value, data=data, cookies=cookies)
-    
+
     driver.quit()
     if requests.utils.dict_from_cookiejar(response.cookies).get("boobs"):
         cookies = requests.utils.dict_from_cookiejar(response.cookies)
@@ -206,6 +220,8 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
                 AbsActive.date_closing,
                 AbsActive.start_time,
                 AbsActive.end_time,
+                AbsActive.all_time,
+                AbsActive.is_up,
             )
             .join(Abs, Abs.abs_id == AbsActive.abs_id)
             .filter(AbsActive.date_closing.is_(None))
@@ -229,6 +245,8 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
                 date_closing=i[13],
                 start_time=i[14],
                 end_time=i[15],
+                all_time=i[16],
+                is_up=i[17],
             )
             for i in data
         ]
@@ -285,6 +303,8 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                     AbsActive.date_closing,
                     AbsActive.start_time,
                     AbsActive.end_time,
+                    AbsActive.all_time,
+                    AbsActive.is_up,
                 )
                 .join(Abs, Abs.abs_id == AbsActive.abs_id)
                 .filter(Abs.user_id == user.user_id)
@@ -309,6 +329,8 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                     date_closing=i[13],
                     start_time=i[14],
                     end_time=i[15],
+                    all_time=i[16],
+                    is_up=i[17],
                 )
                 for i in data
             ]
@@ -349,6 +371,8 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
                     AbsActive.date_closing,
                     AbsActive.start_time,
                     AbsActive.end_time,
+                    AbsActive.all_time,
+                    AbsActive.is_up,
                 )
                 .join(Abs, Abs.abs_id == AbsActive.abs_id)
                 .filter(Abs.user_id == user.user_id)
@@ -373,6 +397,8 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
                     date_closing=i[13],
                     start_time=i[14],
                     end_time=i[15],
+                    all_time=i[16],
+                    is_up=i[17],
                 )
                 for i in data
             ]
@@ -383,7 +409,14 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
 
 @router.get("/creact_abs_active", tags=["Приложение"], summary='Создание "Работающий записи"')
 async def creact_abs_active(
-    user_login: str, abs_id: int, position: int, price_limitation: float, start_time: time, end_time: time
+    user_login: str,
+    abs_id: int,
+    position: int,
+    price_limitation: float,
+    start_time: time,
+    end_time: time,
+    all_time: bool,
+    is_up: bool,
 ) -> AbsActiveSchema:
     """
     Создание новой записи для отслеживания
@@ -412,6 +445,8 @@ async def creact_abs_active(
                     date_closing=None,
                     start_time=start_time,
                     end_time=end_time,
+                    all_time=all_time,
+                    is_up=is_up,
                 )
                 await async_add_data(AbsActive, new_abs_active)
                 return new_abs_active
@@ -540,16 +575,21 @@ async def update_items_user(
                         .split("/")[2],
                         "link": attr,
                         "link_main_img": img,
+                        "viewer": int(viewer.split("/")[-1].replace(" ", "")),
                     }
                 )
-                for id_, name, city, attr, img in zip(
+                for id_, name, city, attr, img, viewer in zip(
                     tree_item.xpath("//*[contains(@class, 'bull-item__image-cell')]/@data-bulletin-id"),
                     tree_item.xpath("//*[contains(@class, 'bull-item__self-link')]/text()"),
                     tree_item.xpath("//*[contains(@class, 'bull-delivery__city')]/text()"),
                     tree_item.xpath("//*[contains(@class, 'bull-item__self-link')]/@href"),
                     tree_item.xpath("//img/@src"),
+                    tree_item.xpath(
+                        '//*[contains(concat( " ", @class, " " ), concat( " ", "nano-eye-text", " " ))]/text()'
+                    ),
                 )
             ]
+            print(items_list)
             for item in items_list:
                 await async_add_data(Abs, item)
 
@@ -609,6 +649,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         asyncio.run(async_add_data(User, user_data))
         headers_dict: HeadersSchema = HeadersSchema(**dict(response.headers))
         cookies_dict: CookiesSchema = CookiesSchema(**cookies)
+        asyncio.run(async_add_data(Cookies, cookies_dict))
         return ResponseLoginSchema(headers=headers_dict, cookies=cookies_dict)
     else:
         raise HTTPException(
@@ -625,11 +666,11 @@ def login_burp(text_headers: TextSchema) -> ResponseLoginSchema:
         if ": " in line:
             key, value = line.split(": ", 1)
             headers[key] = value
-    
-    cookies = {i.split("=")[0] : i.split("=")[1] for i in headers["Cookie"].split("; ") }
+
+    cookies = {i.split("=")[0]: i.split("=")[1] for i in headers["Cookie"].split("; ")}
     del headers["Cookie"]
     del headers["Host"]
-    
+
     headers_dict: HeadersSchema = HeadersSchema(**headers)
     cookies_dict: CookiesSchema = CookiesSchema(**cookies)
     if cookies_dict.login:

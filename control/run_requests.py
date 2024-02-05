@@ -23,6 +23,7 @@ update_cookies = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_cookies"
 get_user_with_abs_active = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_user_with_abs_active?abs_active_id="
 get_cookies_with_user = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_cookies_with_user?login="
 get_telegram_chat_id = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_telegram_chat_id?login="
+stop_tracking = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/stop_tracking?abs_active_id="
 
 logger.add("log/log_control.log", rotation="2 MB")
 
@@ -107,10 +108,13 @@ def parse_html_text(html_code: str) -> dict:
     dict_items: dict = {}
 
     for i, id_item, price in zip(range(1, len(list_link_id) + 1), list_link_id, list_item_price):
-        dict_items[f"{i}"] = {
-            "abs_id": id_item,
-            "price": price,
-        }
+        if price < 10_000:
+            dict_items[f"{i}"] = {
+                "abs_id": id_item,
+                "price": price,
+            }
+
+    logger.info(str(dict_items))
 
     return dict_items
 
@@ -131,7 +135,7 @@ def control_competitors(abs_id: int, dict_items: dict) -> Union[None, float, int
         if find_item_number(dict_items, abs_id) < find_item_number(dict_items, 79363918):
             return None
 
-    competitor = dict_items.get(f"{find_item_number(,79363918)}")
+    competitor = dict_items.get(f"{find_item_number(dict_items,79363918)}")
 
     if competitor:
         if competitor.get("price") < 9999:
@@ -143,41 +147,43 @@ def control_competitors(abs_id: int, dict_items: dict) -> Union[None, float, int
 
 
 def check_position(
-    position: int, dict_items: dict, abs_id: int, chat_id: int, item: dict, limit: int
+    position: int, dict_items: dict, abs_id: int, chat_id: int, item: dict
 ) -> Union[None, float, int]:
     """Получение цены за позицию"""
-    competitor = control_competitors(abs_id=abs_id, dict_items=dict_items)
-    if competitor:
-        subcategories_link = "https://www.farpost.ru/" + item.get("attr")
-        message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> в режиме обгона конкурента в категории<a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
-        send_telegram_message(chat_id=chat_id, message=message)
-        return competitor
+    # competitor = control_competitors(abs_id=abs_id, dict_items=dict_items)
+    # if competitor:
+    #     subcategories_link = "https://www.farpost.ru/" + item.get("attr")
+    #     message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> в режиме обгона конкурента в категории<a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
+    #     send_telegram_message(chat_id=chat_id, message=message)
+    #     return competitor
 
     position_item = dict_items.get(f"{position}")
-    position_item_last = dict_items.get(f"{position-1}")
-    print_up = None
-    if position_item:
-        if position_item.get("abs_id") != abs_id:
-            if position_item.get("price") < 9999:
-                print_up = position_item.get("price") + 1
-            else:
-                print_up = 10
-        else:
-            if position_item_last.get("price") < 9999:
-                print_up = position_item_last.get("price") + 1
-            else:
-                print_up = 10
+    position_item_last = dict_items.get(f"{position+1}")
 
-    position_now = find_item_number(dict_items, abs_id)
-    if position_now:
-        if position_now > position:
-            if print_up:
-                if print_up <= limit:
-                    subcategories_link = "https://www.farpost.ru/" + item.get("attr")
-                    message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
-                    logger.debug(f"{abs_id} | {position_now} | {position}")
-                    send_telegram_message(chat_id=chat_id, message=message)
-    return print_up
+    if position_item is None and position_item_last is None:
+        return 10
+
+    if position_item and int(position_item.get("abs_id")) == abs_id:
+        if position_item_last:
+            return position_item_last.get("price") + 1
+        else:
+            logger.info(position_item_last)
+            return None
+
+    if position_item and int(position_item.get("abs_id")) != abs_id:
+        position_now = find_item_number(dict_items, abs_id)
+        if position_now and position_now > position:
+            if item.get('is_up'):
+                subcategories_link = "https://www.farpost.ru/" + item.get("attr")
+                message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
+                logger.debug(f"{abs_id} | {position_now} | {position}")
+                send_telegram_message(chat_id=chat_id, message=message)
+                requests.get(stop_tracking + item.get("abs_active_id"))
+
+        return position_item.get("price") + 1
+
+    if position_item is None:
+        return 10
 
 
 def up_abs(
@@ -186,6 +192,7 @@ def up_abs(
     """Поднятия на позицию"""
 
     while True:
+        logger.info(f"Обьявление пытаеться подняться | {abs_id}")
         try:
             requests.get(
                 f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
@@ -212,8 +219,75 @@ def up_abs(
     logger.info(f"Объявление : {abs_id} | Цена поднятия : {price} | Позиция сейчас : {top}")
 
 
+def get_html_user_cookies(items):
+    common_headers = {
+        "Host": "www.farpost.ru",
+        "Cache-Control": "max-age=0",
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Sec_Fetch_Site": "same-origin",
+        "Sec_Fetch_Mode": "navigate",
+    }
+    session = requests.Session()
+
+    params1: dict = {"u": "/sign?return=%252F"}
+    headers1: dict = common_headers.copy()
+    headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+    session.get("https://www.farpost.ru/verify", params=params1, headers=headers1)
+
+    params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
+    headers2: dict = common_headers.copy()
+    headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+    session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
+
+    user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
+    cookies = requests.get(get_cookies_with_user + user.get("login")).json()
+
+    html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
+    return html_code, user, cookies
+
+
+def load_item(items):
+    html_code, user, cookies = get_html_user_cookies(items=items)
+    chat_id = requests.get(get_telegram_chat_id + user.get("login")).json()["telegram_id"]
+
+    tree: html.HtmlElement = html.fromstring(html_code)
+    title: str = tree.xpath("/html/head/title/text()")
+
+    logger.error("Название раздела для сбора : " + ",".join(title))
+
+    price_up = check_position(
+        items.get("position"),
+        parse_html_text(html_code),
+        items.get("abs_id"),
+        chat_id,
+        items,
+    )
+    
+    if price_up and price_up < items.get("price_limitation"):
+        up_abs(
+            items.get("abs_id"),
+            price_up,
+            items.get("abs_active_id"),
+            items.get("position"),
+            cookies,
+            chat_id,
+            items,
+        )
+    elif price_up is None:
+        pass
+    else:
+        if items.get("is_up"):
+            send_telegram_message_bot_2(
+                chat_id,
+                f"""Приклеенное объявление <a href='{items.get("link")}'>{items.get("name_farpost")}</a> не может подняться увеличте лимит до {price_up*2} !!!!!""",
+            )
+            requests.get(stop_tracking + items.get("abs_active_id"))
+
+
 def checking_position() -> None:
-    """Основной цикал"""
+    """Основной цикл"""
 
     list_items_parse: list[dict] = [
         {
@@ -227,6 +301,8 @@ def checking_position() -> None:
             "start_time": i["start_time"],
             "end_time": i["end_time"],
             "subcategories": i["subcategories"],
+            "all_time": i["all_time"],
+            "is_up": i["is_up"],
         }
         for i in requests.get(url=get_active_data_close_none).json()
     ]
@@ -234,64 +310,14 @@ def checking_position() -> None:
     for items in list_items_parse:
         datetime_now = datetime.now()
         time_now = dt_time(hour=datetime_now.hour, minute=datetime_now.minute)
-        if (
+        logger.error(items["all_time"])
+        if not items["all_time"]:
+            load_item(items)
+        elif (
             dt_time.fromisoformat(items.get("start_time")) < time_now
             and dt_time.fromisoformat(items.get("end_time")) > time_now
         ):
-            common_headers = {
-                "Host": "www.farpost.ru",
-                "Cache-Control": "max-age=0",
-                "Upgrade-Insecure-Requests": "1",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "Sec_Fetch_Site": "same-origin",
-                "Sec_Fetch_Mode": "navigate",
-            }
-            session = requests.Session()
-
-            params1: dict = {"u": "/sign?return=%252F"}
-            headers1: dict = common_headers.copy()
-            headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-            session.get("https://www.farpost.ru/verify", params=params1, headers=headers1)
-
-            params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
-            headers2: dict = common_headers.copy()
-            headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
-            session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
-
-            user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
-            cookies = requests.get(get_cookies_with_user + user.get("login")).json()
-            chat_id = requests.get(get_telegram_chat_id + user.get("login")).json()["telegram_id"]
-            html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
-
-            # tree: html.HtmlElement = html.fromstring(html_code)
-            # title: str = tree.xpath("/html/head/title/text()")
-
-            # logger.error("Название раздела для сбора : " + ",".join(title))
-
-            dict_data = parse_html_text(html_code)
-
-            price_up = check_position(
-                items.get("position"), dict_data, items.get("abs_id"), chat_id, items, items.get("price_limitation")
-            )
-            if price_up:
-                if price_up < items.get("price_limitation"):
-                    up_abs(
-                        items.get("abs_id"),
-                        price_up,
-                        items.get("abs_active_id"),
-                        items.get("position"),
-                        cookies,
-                        chat_id,
-                        items,
-                    )
-                else:
-                    send_telegram_message_bot_2(
-                        chat_id,
-                        f"""Приклеенное объявление <a href='{items.get("link")}'>{items.get("name_farpost")}</a> не может подняться увеличте лимит до {price_up*2} !!!!!""",
-                    )
-            else:
-                pass
+            load_item(items)
         else:
             user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
             cookies = requests.get(get_cookies_with_user + user.get("login")).json()

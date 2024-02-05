@@ -1,4 +1,4 @@
-version: "2.2"
+version: "3.1"
 services:
   api:
     build:
@@ -32,7 +32,7 @@ services:
       - api
 
   db:
-    image: postgres:latest
+    image: postgres:15
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -64,7 +64,6 @@ services:
     depends_on:
       - frontend
       - api
-
 
 volumes:
   data_postgres:
