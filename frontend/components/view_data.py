@@ -128,8 +128,8 @@ class ViewData(ContentAbstract):
                                     ft.DataColumn(ft.Text("Название")),
                                     ft.DataColumn(ft.Text("Город")),
                                     ft.DataColumn(ft.Text("Подкатегория")),
-                                    ft.DataColumn(ft.Text("id объявления")),
-                                    ft.DataColumn(ft.Text("Закрепленая позиция")),
+                                    ft.DataColumn(ft.Text("ID")),
+                                    ft.DataColumn(ft.Text("Позиция")),
                                     ft.DataColumn(ft.Text("Лимит цены")),
                                     ft.DataColumn(ft.Text("Дата начала")),
                                     ft.DataColumn(ft.Text("Дата конца")),
@@ -170,8 +170,8 @@ class ViewData(ContentAbstract):
                                     ft.DataColumn(ft.Text("Название")),
                                     ft.DataColumn(ft.Text("Город")),
                                     ft.DataColumn(ft.Text("Подкатегория")),
-                                    ft.DataColumn(ft.Text("id объявления")),
-                                    ft.DataColumn(ft.Text("Закрепленая позиция")),
+                                    ft.DataColumn(ft.Text("ID")),
+                                    ft.DataColumn(ft.Text("Позиция")),
                                     ft.DataColumn(ft.Text("Лимит цены")),
                                     ft.DataColumn(ft.Text("Дата начала")),
                                     ft.DataColumn(ft.Text("Дата конца")),
@@ -254,7 +254,7 @@ class ViewData(ContentAbstract):
 
     def sort_viewer(self, e):
         self.tab_all_content.content.controls[1].controls[0].rows.sort(
-            key=lambda x: x.cells[e.column_index].content.value, reverse=not self.sort
+            key=lambda x: x.cells[e.column_index].content.content.value, reverse=not self.sort
         )
         self.sort = not self.sort
         self.page.update()
@@ -299,19 +299,25 @@ class ViewData(ContentAbstract):
             return ft.DataRow(
                 cells=[
                     ft.DataCell(
-                        ft.IconButton(
-                            icon=ft.icons.PENDING_ACTIONS_ROUNDED,
-                            on_click=lambda e: self.open_dialog(e, data_row["abs_id"]),
+                        ft.Container(
+                            ft.IconButton(
+                                icon=ft.icons.PENDING_ACTIONS_ROUNDED,
+                                on_click=lambda e: self.open_dialog(e, data_row["abs_id"]),
+                            ),
+                            width=30,
                         )
                     ),
-                    ft.DataCell(ft.Text(data_row["name_farpost"])),
-                    ft.DataCell(ft.Text(data_row["viewer"])),
-                    ft.DataCell(ft.Text(data_row["city_english"])),
-                    ft.DataCell(ft.Text(data_row["categore"])),
-                    ft.DataCell(ft.Text(data_row["subcategories"])),
+                    ft.DataCell(ft.Container(ft.Text(data_row["name_farpost"]), width=250)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["viewer"]), width=50)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=50)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["categore"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["subcategories"]), width=100)),
                     ft.DataCell(
-                        ft.Image(
-                            src=data_row["link_main_img"],
+                        ft.Container(
+                            ft.Image(
+                                src=data_row["link_main_img"],
+                            ),
+                            width=250,
                         )
                     ),
                 ],
@@ -319,14 +325,19 @@ class ViewData(ContentAbstract):
         elif tab_name == "histore":
             return ft.DataRow(
                 cells=[
-                    ft.DataCell(ft.Text(data_row["name_farpost"])),
-                    ft.DataCell(ft.Text(data_row["city_english"])),
-                    ft.DataCell(ft.Text(data_row["subcategories"])),
-                    ft.DataCell(ft.Text(data_row["abs_id"])),
-                    ft.DataCell(ft.Text(data_row["position"])),
-                    ft.DataCell(ft.Text(data_row["price_limitation"])),
-                    ft.DataCell(ft.Text(data_row["date_creation"])),
-                    ft.DataCell(ft.Text(data_row["date_closing"])),
+                    ft.DataCell(ft.Container(ft.Text(data_row["name_farpost"]), width=250)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["subcategories"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["abs_id"]), width=50)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["position"], style="displaySmall"), width=30)),
+                    ft.DataCell(
+                        ft.Container(
+                            ft.Text(data_row["price_limitation"], style="displaySmall", color=ft.colors.RED_600),
+                            width=50,
+                        )
+                    ),
+                    ft.DataCell(ft.Container(ft.Text(data_row["date_creation"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["date_closing"]), width=100)),
                 ],
             )
 
@@ -334,19 +345,27 @@ class ViewData(ContentAbstract):
             return ft.DataRow(
                 cells=[
                     ft.DataCell(
-                        ft.IconButton(
-                            icon=ft.icons.DELETE,
-                            on_click=lambda e: self.open_dialog_confirmation(e, data_row["abs_active_id"]),
+                        ft.Container(
+                            ft.IconButton(
+                                icon=ft.icons.DELETE,
+                                on_click=lambda e: self.open_dialog_confirmation(e, data_row["abs_active_id"]),
+                            ),
+                            width=30,
                         )
                     ),
-                    ft.DataCell(ft.Text(data_row["name_farpost"])),
-                    ft.DataCell(ft.Text(data_row["city_english"])),
-                    ft.DataCell(ft.Text(data_row["subcategories"])),
-                    ft.DataCell(ft.Text(data_row["abs_id"])),
-                    ft.DataCell(ft.Text(data_row["position"])),
-                    ft.DataCell(ft.Text(data_row["price_limitation"])),
-                    ft.DataCell(ft.Text(data_row["date_creation"])),
-                    ft.DataCell(ft.Text(data_row["date_closing"])),
+                    ft.DataCell(ft.Container(ft.Text(data_row["name_farpost"]), width=250)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["subcategories"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["abs_id"]), width=50)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["position"], style="displaySmall"), width=30)),
+                    ft.DataCell(
+                        ft.Container(
+                            ft.Text(data_row["price_limitation"], style="displaySmall", color=ft.colors.AMBER_600),
+                            width=50,
+                        )
+                    ),
+                    ft.DataCell(ft.Container(ft.Text(data_row["date_creation"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["date_closing"]), width=100)),
                 ],
             )
 
@@ -424,8 +443,8 @@ class ViewData(ContentAbstract):
                                     ft.DataColumn(ft.Text("Название")),
                                     ft.DataColumn(ft.Text("Город")),
                                     ft.DataColumn(ft.Text("Подкатегория")),
-                                    ft.DataColumn(ft.Text("id объявления")),
-                                    ft.DataColumn(ft.Text("Закрепленая позиция")),
+                                    ft.DataColumn(ft.Text("ID")),
+                                    ft.DataColumn(ft.Text("Позиция")),
                                     ft.DataColumn(ft.Text("Лимит цены")),
                                     ft.DataColumn(ft.Text("Дата начала")),
                                     ft.DataColumn(ft.Text("Дата конца")),
@@ -464,8 +483,8 @@ class ViewData(ContentAbstract):
                                     ft.DataColumn(ft.Text("Название")),
                                     ft.DataColumn(ft.Text("Город")),
                                     ft.DataColumn(ft.Text("Подкатегория")),
-                                    ft.DataColumn(ft.Text("id объявления")),
-                                    ft.DataColumn(ft.Text("Закрепленая позиция")),
+                                    ft.DataColumn(ft.Text("ID")),
+                                    ft.DataColumn(ft.Text("Позиция")),
                                     ft.DataColumn(ft.Text("Лимит цены")),
                                     ft.DataColumn(ft.Text("Дата начала")),
                                     ft.DataColumn(ft.Text("Дата конца")),
@@ -510,27 +529,14 @@ class ViewData(ContentAbstract):
 
     def get_top_one(self, abs_id) -> float:
         abs = requests.get(RequstsApi.AbsInfo.value + str(abs_id)).json()
-        html_code = requests.get(
-            f"https://www.farpost.ru/" + abs["category_attribute"],
-            cookies=self.master.headers_cookies["cookies"],
-            headers=self.master.headers_cookies["headers"],
-        ).text
-
-        html_parce = html.fromstring(html_code)
-
-        list_item_price: list[float] = [
-            float(i.split(":")[1].split("-")[0][2:])
-            for i in html_parce.xpath(
-                """//*[contains(concat( " ", @class, " " ), concat( " ", "bull-item__image-cell", " " ))]/@data-order-key"""
+        return (
+            requests.get(
+                RequstsApi.GetTopOne.value
+                + f"?login={self.master.headers_cookies.get('cookies').get('login')}&category_attribute={abs['category_attribute']}"
             )
-        ]
-        if len(list_item_price) > 0:
-            if list_item_price[0] > 10000:
-                return 10
-            else:
-                return list_item_price[0]
-        else:
-            return 10
+            .json()
+            .get("price")
+        )
 
     def open_dialog(self, e, abs_id) -> None:
         """Создание окна для сбора параметров"""
@@ -541,6 +547,12 @@ class ViewData(ContentAbstract):
             adaptive=True, label="Выбрать время", value=False, on_change=lambda e: self.update_time(switch, e)
         )
 
+        switch_competitor = ft.Switch(
+            adaptive=True,
+            label="Возможность обходить конкурента",
+            value=False,
+            on_change=lambda e: self.update_switch_competitor(switch_competitor, e),
+        )
         self.dlg = AlertDialogInput(
             abs_id=abs_id,
             modal=True,
@@ -548,18 +560,23 @@ class ViewData(ContentAbstract):
                 controls=[
                     ft.TextField(
                         label="Позиция",
-                        input_filter=ft.InputFilter(allow=True, regex_string=r"[0-9]", replacement_string=""),
+                        input_filter=ft.InputFilter(allow=True, regex_string=r"^\d{1,1}$", replacement_string=""),
                     ),
                     ft.TextField(
                         label="Лимит",
-                        input_filter=ft.InputFilter(allow=True, regex_string=r"[0-9]", replacement_string=""),
+                        input_filter=ft.InputFilter(allow=True, regex_string=r"^\d{1,4}$", replacement_string=""),
                     ),
                     ft.Text(
                         f"""Цена за 1 место сейчас : {price}\nРекамендуется ставить лимит в 2 раза больше чем цена за первое место
                         """,
-                        size=20,
+                        color=ft.colors.RED_600,
+                        size=16,
                     ),
                     switch,
+                    ft.Row(
+                        [],
+                    ),
+                    switch_competitor,
                     ft.Row(
                         [],
                     ),
@@ -602,6 +619,18 @@ class ViewData(ContentAbstract):
 
         self.page.update()
 
+    def update_switch_competitor(self, switch, e):
+        if switch.value:
+            self.dlg.content.controls[6].controls = [
+                ft.TextField(
+                    label="Ссылка на конкурента",
+                ),
+            ]
+        else:
+            self.dlg.content.controls[6].controls = []
+
+        self.page.update()
+
     def creact_active(self, e) -> None:
         """Создание записи abs_active"""
 
@@ -611,24 +640,50 @@ class ViewData(ContentAbstract):
         price_limitation: float = float(self.dlg.content.controls[1].value)
         all_time: str = str(bool(self.dlg.content.controls[3].value)).lower()
         is_up: str = "true"
-        print(self.time_end)
-        try:
-            time_end = self.time_end
-            time_start = self.time_start
-        except:
-            time_end = time(hour=10, minute=20)
-            time_start = time(hour=10, minute=20)
-        response = requests.get(
-            RequstsApi.CreactAbsActive.value
-            + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}&start_time={time_start}&end_time={time_end}&all_time={all_time}&is_up={is_up}"
-        )
-        self.update_data(1, 3)
-        if response.status_code == 200:
-            self.dlg.open = False
-            self.page.update()
+
+        if price_limitation < float(requests.get(RequstsApi.Wallet.value + self.login).json()["wallet"]):
+            try:
+                time_end = self.time_end
+                time_start = self.time_start
+            except:
+                time_end = time(hour=10, minute=20)
+                time_start = time(hour=10, minute=20)
+
+            if not self.dlg.content.controls[5].value:
+                link = (
+                    RequstsApi.CreactAbsActive.value
+                    + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}&start_time={time_start}&end_time={time_end}&all_time={all_time}&is_up={is_up}"
+                )
+            else:
+                try:
+                    value_con = int(self.dlg.content.controls[6].controls[0].value.split("-")[-1].split(".")[0])
+
+                    link = (
+                        RequstsApi.CreactAbsActive.value
+                        + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}&start_time={time_start}&end_time={time_end}&all_time={all_time}&is_up={is_up}&competitor_id={value_con}"
+                    )
+                except:
+                    link = (
+                        RequstsApi.CreactAbsActive.value
+                        + f"?user_login={user_login}&abs_id={abs_id}&position={position}&price_limitation={price_limitation}&start_time={time_start}&end_time={time_end}&all_time={all_time}&is_up={is_up}"
+                    )
+            response = requests.get(link)
+            self.update_data(1, 3)
+            if response.status_code == 200:
+                self.dlg.open = False
+                self.page.update()
+            else:
+                detail = response.json().get("detail")
+                self.dlg.open = False
+                self.page.update()
         else:
-            detail = response.json().get("detail")
-            self.dlg.open = False
+            self.dlg.content.controls.append(
+                ft.Text(
+                    f"""На вашем кошельке не достаточно средст""",
+                    color=ft.colors.RED_600,
+                    size=16,
+                ),
+            )
             self.page.update()
 
     def close_active(self, e, abs_id) -> None:

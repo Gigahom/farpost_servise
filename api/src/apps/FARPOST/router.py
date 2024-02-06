@@ -27,6 +27,7 @@ from .schemas import (
     WalletSchema,
     TelegramSchema,
     TextSchema,
+    PriceTopOneSchema,
 )
 
 from src.apps.models import User, AbsActive, Abs, Cookies
@@ -59,6 +60,39 @@ tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
         },
     },
 ]
+
+
+@router.get("/get_top_one", tags=["Система контроля"], summary="Остановка связи с недостатком средст")
+async def get_top_one(category_attribute: str, login: str) -> PriceTopOneSchema:
+    async with get_async_session() as session:
+        result = await session.execute(select(Cookies).filter(Cookies.login == login))
+        cookies = result.scalars().first()
+        if cookies:
+            data = cookies.to_read_model().model_dump()
+            html_code = requests.get(
+                f"https://www.farpost.ru/" + category_attribute,
+                cookies=data
+            ).text
+
+            html_parce = html.fromstring(html_code)
+
+            list_item_price: list[float] = [
+                float(i.split(":")[1].split("-")[0][2:])
+                for i in html_parce.xpath(
+                    """//*[contains(concat( " ", @class, " " ), concat( " ", "bull-item__image-cell", " " ))]/@data-order-key"""
+                )
+            ]
+            if len(list_item_price) > 0:
+                if list_item_price[0] > 10000:
+                    price = 10
+                else:
+                    price = list_item_price[0]
+            else:
+                price = 10
+            
+            return PriceTopOneSchema(price=price)
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
 
 
 @router.get("/stop_tracking", tags=["Система контроля"], summary="Остановка связи с недостатком средст")
@@ -222,6 +256,7 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
                 AbsActive.end_time,
                 AbsActive.all_time,
                 AbsActive.is_up,
+                AbsActive.competitor_id,
             )
             .join(Abs, Abs.abs_id == AbsActive.abs_id)
             .filter(AbsActive.date_closing.is_(None))
@@ -247,6 +282,7 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
                 end_time=i[15],
                 all_time=i[16],
                 is_up=i[17],
+                competitor_id=i[18]
             )
             for i in data
         ]
@@ -305,6 +341,7 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                     AbsActive.end_time,
                     AbsActive.all_time,
                     AbsActive.is_up,
+                    AbsActive.competitor_id,
                 )
                 .join(Abs, Abs.abs_id == AbsActive.abs_id)
                 .filter(Abs.user_id == user.user_id)
@@ -331,6 +368,7 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                     end_time=i[15],
                     all_time=i[16],
                     is_up=i[17],
+                    competitor_id=i[18]
                 )
                 for i in data
             ]
@@ -373,6 +411,7 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
                     AbsActive.end_time,
                     AbsActive.all_time,
                     AbsActive.is_up,
+                    AbsActive.competitor_id,
                 )
                 .join(Abs, Abs.abs_id == AbsActive.abs_id)
                 .filter(Abs.user_id == user.user_id)
@@ -399,6 +438,7 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
                     end_time=i[15],
                     all_time=i[16],
                     is_up=i[17],
+                    competitor_id=i[18]
                 )
                 for i in data
             ]
@@ -417,6 +457,7 @@ async def creact_abs_active(
     end_time: time,
     all_time: bool,
     is_up: bool,
+    competitor_id: int = None
 ) -> AbsActiveSchema:
     """
     Создание новой записи для отслеживания
@@ -447,6 +488,7 @@ async def creact_abs_active(
                     end_time=end_time,
                     all_time=all_time,
                     is_up=is_up,
+                    competitor_id=competitor_id
                 )
                 await async_add_data(AbsActive, new_abs_active)
                 return new_abs_active

@@ -89,26 +89,27 @@ def find_item_number(data: dict, id_item: int) -> int | None:
     return None
 
 
-def control_competitors(abs_id: int, dict_items: dict) -> Union[None, float, int]:
-    if find_item_number(dict_items, abs_id):
-        if find_item_number(dict_items, abs_id) < find_item_number(dict_items, 79363918):
-            return None
+def control_competitors(abs_id: int, dict_items: dict, competitor_id: int) -> Union[None, float, int]:
+    ads_position = find_item_number(dict_items, abs_id)
+    ads_competitor_position = find_item_number(dict_items, competitor_id)
 
-    competitor = dict_items.get(f"{find_item_number(dict_items,79363918)}")
+    if not ads_position or not ads_competitor_position:
+        return None
 
-    if competitor:
-        if competitor.get("price") < 9999:
-            print_up = competitor.get("price") + 1
-        else:
-            print_up = 10
+    if ads_position < ads_competitor_position:
+        return None
 
-    return print_up
+    return dict_items.get(f"{ads_competitor_position}").get("price") + 1
 
 
-def check_position(
-    position: int, dict_items: dict, abs_id: int, chat_id: int, item: dict
-) -> Union[None, float, int]:
+def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, item: dict) -> Union[None, float, int]:
     """Получение цены за позицию"""
+
+    if item.get("competitor_id"):
+        competitor = control_competitors(abs_id=abs_id, dict_items=dict_items, competitor_id=item.get("competitor_id"))
+        if competitor:
+            return competitor
+
     # competitor = control_competitors(abs_id=abs_id, dict_items=dict_items)
     # if competitor:
     #     subcategories_link = "https://www.farpost.ru/" + item.get("attr")
@@ -132,7 +133,7 @@ def check_position(
     if position_item and int(position_item.get("abs_id")) != abs_id:
         position_now = find_item_number(dict_items, abs_id)
         if position_now and position_now > position:
-            if item.get('is_up'):
+            if item.get("is_up"):
                 subcategories_link = "https://www.farpost.ru/" + item.get("attr")
                 message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
                 logger.debug(f"{abs_id} | {position_now} | {position}")
@@ -175,7 +176,7 @@ def up_abs(
                     )
             except:
                 pass
-            
+
             if i > 20:
                 logger.info(f"Обьявление не смогло подняться | {abs_id}")
                 break
@@ -232,17 +233,23 @@ def load_item(items):
         chat_id,
         items,
     )
-    
+
     if price_up and price_up < items.get("price_limitation"):
-        up_abs(
-            items.get("abs_id"),
-            price_up,
-            items.get("abs_active_id"),
-            items.get("position"),
-            cookies,
-            chat_id,
-            items,
-        )
+        if price_up < requests.get(UrlsEnums.get_wallet_user.value + user.get("login")).json().get("wallet"):
+            up_abs(
+                items.get("abs_id"),
+                price_up,
+                items.get("abs_active_id"),
+                items.get("position"),
+                cookies,
+                chat_id,
+                items,
+            )
+        else:
+            requests.get(
+                f"https://www.farpost.ru/bulletin/service-configure?ids={items.get('abs_id')}&applier=unStickBulletin&auto_apply=1",
+                cookies=cookies,
+            )
     elif price_up is None:
         pass
     else:
@@ -271,6 +278,7 @@ def checking_position() -> None:
             "subcategories": i["subcategories"],
             "all_time": i["all_time"],
             "is_up": i["is_up"],
+            "competitor_id": i["competitor_id"],
         }
         for i in requests.get(url=UrlsEnums.get_active_data_close_none.value).json()
     ]

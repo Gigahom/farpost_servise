@@ -213,6 +213,7 @@ class AbsActive(Base):
     end_time: Mapped[Time] = mapped_column(types.Time, nullable=False, default=time(18, 0))
     all_time: Mapped[bool] = mapped_column(types.Boolean, default=False)
     is_up: Mapped[bool] = mapped_column(types.Boolean, default=False)
+    competitor_id: Mapped[int] = mapped_column(types.Integer, nullable=True)
 
     # Relationships
     abs: Mapped["Abs"] = relationship("Abs", back_populates="abs_actives")
@@ -233,6 +234,7 @@ class AbsActive(Base):
             end_time=self.end_time,
             all_time=self.all_time,
             is_up=self.is_up,
+            competitor_id=self.competitor_id
         )
 
     @classmethod

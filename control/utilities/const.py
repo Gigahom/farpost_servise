@@ -16,3 +16,4 @@ class UrlsEnums(Enum):
     get_cookies_with_user = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_cookies_with_user?login="
     get_telegram_chat_id = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_telegram_chat_id?login="
     stop_tracking = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/stop_tracking?abs_active_id="
+    get_wallet_user = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_wallet_user?login="

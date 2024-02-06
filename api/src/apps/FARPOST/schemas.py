@@ -4,6 +4,9 @@ from uuid import UUID
 from datetime import datetime, time
 
 
+class PriceTopOneSchema(BaseModel):
+    price: float
+
 class TextSchema(BaseModel):
     text: str
 
@@ -51,6 +54,7 @@ class AbsActiveSchema(BaseModel):
     end_time: time
     all_time: bool
     is_up: bool
+    competitor_id: int | None
 
 
 class AbsActiveMergeSchema(BaseModel):
@@ -76,6 +80,7 @@ class AbsActiveMergeSchema(BaseModel):
     end_time: time
     all_time: bool
     is_up: bool
+    competitor_id: int | None
 
 
 class HeadersSchema(BaseModel):
