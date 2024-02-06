@@ -1,5 +1,4 @@
 from loguru import logger
-from apscheduler.schedulers.background import BackgroundScheduler
 
 import requests
 from lxml import html
@@ -11,54 +10,14 @@ import re
 from datetime import datetime
 from datetime import time as dt_time
 
-API_HOST = os.environ.get("API_HOST")
-API_PORT = os.environ.get("API_PORT")
-TG_API_KEY = os.environ.get("TG_API_KEY")
-TG_API_KEY_2 = os.environ.get("TG_API_KEY_2")
-
-PREF_FARPOST = "/api/v1/farpost"
-
-get_active_data_close_none = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_active_data_close_none"
-update_cookies = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_cookies"
-get_user_with_abs_active = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_user_with_abs_active?abs_active_id="
-get_cookies_with_user = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_cookies_with_user?login="
-get_telegram_chat_id = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_telegram_chat_id?login="
-stop_tracking = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/stop_tracking?abs_active_id="
+from utilities.update_cookies import scheduler
+from utilities.tg import send_telegram_message, send_telegram_message_bot_2
+from utilities.const import UrlsEnums
 
 logger.add("log/log_control.log", rotation="2 MB")
 
-scheduler = BackgroundScheduler(timezone="Asia/Vladivostok")
 
-
-def prompt() -> None:
-    requests.get(update_cookies)
-    logger.info("Куки обновлены для всех пользователей")
-
-
-scheduler.add_job(prompt, "interval", seconds=10800)
 scheduler.start()
-
-
-def send_telegram_message(chat_id: int, message: str):
-    """
-    Отправляет сообщение пользователю в Telegram.
-    """
-    if chat_id:
-        url = f"https://api.telegram.org/bot{TG_API_KEY}/sendMessage"
-        payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
-        response = requests.post(url, json=payload)
-        return response.json()
-
-
-def send_telegram_message_bot_2(chat_id: int, message: str):
-    """
-    Отправляет сообщение пользователю в Telegram.
-    """
-    if chat_id:
-        url = f"https://api.telegram.org/bot{TG_API_KEY_2}/sendMessage"
-        payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
-        response = requests.post(url, json=payload)
-        return response.json()
 
 
 def is_api_available(url: str, max_attempts: int = 5, delay: int = 5) -> bool:
@@ -178,7 +137,7 @@ def check_position(
                 message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
                 logger.debug(f"{abs_id} | {position_now} | {position}")
                 send_telegram_message(chat_id=chat_id, message=message)
-                requests.get(stop_tracking + item.get("abs_active_id"))
+                requests.get(UrlsEnums.stop_tracking.value + item.get("abs_active_id"))
 
         return position_item.get("price") + 1
 
@@ -190,33 +149,42 @@ def up_abs(
     abs_id: int, price: float, abs_active_id: UUID, position: int, cookies: dict, chat_id: int, item: dict
 ) -> None:
     """Поднятия на позицию"""
-
-    while True:
-        logger.info(f"Обьявление пытаеться подняться | {abs_id}")
-        try:
-            requests.get(
-                f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
-                cookies=cookies,
-            )
-            result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
-            item_top = html.fromstring(result.text)
-            text = item_top.xpath("//strong/text()")
-            top = int(re.findall(r"\d+", text[0])[0])
-            if top == position:
-                break
-            else:
+    i = 0
+    result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
+    price_req_text = html.fromstring(result.text)
+    price_req = float(price_req_text.xpath('//*[(@id = "stickPrice")]/@value')[0])
+    if price_req != price:
+        while True:
+            i += 1
+            logger.info(f"Обьявление пытаеться подняться | {abs_id}")
+            try:
                 requests.get(
-                    f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                    f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
                     cookies=cookies,
                 )
-        except:
-            pass
+                result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
+                item_top = html.fromstring(result.text)
+                text = item_top.xpath("//strong/text()")
+                top = int(re.findall(r"\d+", text[0])[0])
+                if top == position:
+                    break
+                else:
+                    requests.get(
+                        f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                        cookies=cookies,
+                    )
+            except:
+                pass
+            
+            if i > 20:
+                logger.info(f"Обьявление не смогло подняться | {abs_id}")
+                break
 
-    subcategories_link = "https://www.farpost.ru/" + item.get("attr")
-    message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> поднялось до {position}-й позиции в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a> цена поднятия : {price}"""
-    send_telegram_message(chat_id=chat_id, message=message)
+        subcategories_link = "https://www.farpost.ru/" + item.get("attr")
+        message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> поднялось до {position}-й позиции в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a> цена поднятия : {price}"""
+        send_telegram_message(chat_id=chat_id, message=message)
 
-    logger.info(f"Объявление : {abs_id} | Цена поднятия : {price} | Позиция сейчас : {top}")
+        logger.info(f"Объявление : {abs_id} | Цена поднятия : {price} | Позиция сейчас : {top}")
 
 
 def get_html_user_cookies(items):
@@ -241,8 +209,8 @@ def get_html_user_cookies(items):
     headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
     session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
 
-    user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
-    cookies = requests.get(get_cookies_with_user + user.get("login")).json()
+    user = requests.get(UrlsEnums.get_user_with_abs_active.value + items["abs_active_id"]).json()
+    cookies = requests.get(UrlsEnums.get_cookies_with_user.value + user.get("login")).json()
 
     html_code = session.get(f"https://www.farpost.ru/" + items["attr"], cookies=cookies).text
     return html_code, user, cookies
@@ -250,7 +218,7 @@ def get_html_user_cookies(items):
 
 def load_item(items):
     html_code, user, cookies = get_html_user_cookies(items=items)
-    chat_id = requests.get(get_telegram_chat_id + user.get("login")).json()["telegram_id"]
+    chat_id = requests.get(UrlsEnums.get_telegram_chat_id.value + user.get("login")).json()["telegram_id"]
 
     tree: html.HtmlElement = html.fromstring(html_code)
     title: str = tree.xpath("/html/head/title/text()")
@@ -283,7 +251,7 @@ def load_item(items):
                 chat_id,
                 f"""Приклеенное объявление <a href='{items.get("link")}'>{items.get("name_farpost")}</a> не может подняться увеличте лимит до {price_up*2} !!!!!""",
             )
-            requests.get(stop_tracking + items.get("abs_active_id"))
+            requests.get(UrlsEnums.stop_tracking.value + items.get("abs_active_id"))
 
 
 def checking_position() -> None:
@@ -304,7 +272,7 @@ def checking_position() -> None:
             "all_time": i["all_time"],
             "is_up": i["is_up"],
         }
-        for i in requests.get(url=get_active_data_close_none).json()
+        for i in requests.get(url=UrlsEnums.get_active_data_close_none.value).json()
     ]
 
     for items in list_items_parse:
@@ -319,8 +287,8 @@ def checking_position() -> None:
         ):
             load_item(items)
         else:
-            user = requests.get(get_user_with_abs_active + items["abs_active_id"]).json()
-            cookies = requests.get(get_cookies_with_user + user.get("login")).json()
+            user = requests.get(UrlsEnums.get_user_with_abs_active.value + items["abs_active_id"]).json()
+            cookies = requests.get(UrlsEnums.get_cookies_with_user.value + user.get("login")).json()
             abs_id = items.get("abs_id")
             requests.get(
                 f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
@@ -328,7 +296,7 @@ def checking_position() -> None:
             )
 
 
-if is_api_available(get_active_data_close_none):
+if is_api_available(UrlsEnums.get_active_data_close_none.value):
     while True:
         checking_position()
 else:
