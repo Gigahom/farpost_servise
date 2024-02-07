@@ -62,18 +62,39 @@ tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
 ]
 
 
-@router.get("/get_top_one", tags=["Система контроля"], summary="Остановка связи с недостатком средст")
+@router.get("/get_top_one", tags=["Система контроля"], summary="Цена за первую позицию")
 async def get_top_one(category_attribute: str, login: str) -> PriceTopOneSchema:
     async with get_async_session() as session:
         result = await session.execute(select(Cookies).filter(Cookies.login == login))
         cookies = result.scalars().first()
         if cookies:
             data = cookies.to_read_model().model_dump()
-            html_code = requests.get(
+            common_headers = {
+                "Host": "www.farpost.ru",
+                "Cache-Control": "max-age=0",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Sec_Fetch_Site": "same-origin",
+                "Sec_Fetch_Mode": "navigate",
+            }
+            session = requests.Session()
+
+            params1: dict = {"u": "/sign?return=%252F"}
+            headers1: dict = common_headers.copy()
+            headers1["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+            session.get("https://www.farpost.ru/verify", params=params1, headers=headers1)
+
+            params2: dict = {"return": "%2Fverify%3Fr%3D1%26u%3D%252Fsign%253Freturn%253D%25252F"}
+            headers2: dict = common_headers.copy()
+            headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
+            session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
+
+            html_code = session.get(
                 f"https://www.farpost.ru/" + category_attribute,
                 cookies=data
             ).text
-
+            
             html_parce = html.fromstring(html_code)
 
             list_item_price: list[float] = [

@@ -309,7 +309,7 @@ class ViewData(ContentAbstract):
                     ),
                     ft.DataCell(ft.Container(ft.Text(data_row["name_farpost"]), width=250)),
                     ft.DataCell(ft.Container(ft.Text(data_row["viewer"]), width=50)),
-                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=50)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=150)),
                     ft.DataCell(ft.Container(ft.Text(data_row["categore"]), width=100)),
                     ft.DataCell(ft.Container(ft.Text(data_row["subcategories"]), width=100)),
                     ft.DataCell(
@@ -326,13 +326,13 @@ class ViewData(ContentAbstract):
             return ft.DataRow(
                 cells=[
                     ft.DataCell(ft.Container(ft.Text(data_row["name_farpost"]), width=250)),
-                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=150)),
                     ft.DataCell(ft.Container(ft.Text(data_row["subcategories"]), width=100)),
                     ft.DataCell(ft.Container(ft.Text(data_row["abs_id"]), width=50)),
-                    ft.DataCell(ft.Container(ft.Text(data_row["position"], style="displaySmall"), width=30)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["position"]), width=30)),
                     ft.DataCell(
                         ft.Container(
-                            ft.Text(data_row["price_limitation"], style="displaySmall", color=ft.colors.RED_600),
+                            ft.Text(data_row["price_limitation"], color=ft.colors.RED_600),
                             width=50,
                         )
                     ),
@@ -354,13 +354,13 @@ class ViewData(ContentAbstract):
                         )
                     ),
                     ft.DataCell(ft.Container(ft.Text(data_row["name_farpost"]), width=250)),
-                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=100)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["city_english"]), width=150)),
                     ft.DataCell(ft.Container(ft.Text(data_row["subcategories"]), width=100)),
                     ft.DataCell(ft.Container(ft.Text(data_row["abs_id"]), width=50)),
-                    ft.DataCell(ft.Container(ft.Text(data_row["position"], style="displaySmall"), width=30)),
+                    ft.DataCell(ft.Container(ft.Text(data_row["position"]), width=30)),
                     ft.DataCell(
                         ft.Container(
-                            ft.Text(data_row["price_limitation"], style="displaySmall", color=ft.colors.AMBER_600),
+                            ft.Text(data_row["price_limitation"], color=ft.colors.AMBER_600),
                             width=50,
                         )
                     ),
