@@ -13,8 +13,9 @@ from datetime import time as dt_time
 from utilities.update_cookies import scheduler
 from utilities.tg import send_telegram_message, send_telegram_message_bot_2
 from utilities.const import UrlsEnums
+from utilities.logs import custom_sink
 
-logger.add("log/log_control.log", rotation="2 MB")
+logger.add(custom_sink, format="{time} {level} {message}")
 
 
 scheduler.start()
@@ -73,8 +74,6 @@ def parse_html_text(html_code: str) -> dict:
                 "price": price,
             }
 
-    logger.info(str(dict_items))
-
     return dict_items
 
 
@@ -96,39 +95,31 @@ def control_competitors(abs_id: int, dict_items: dict, competitor_id: int) -> Un
     if not ads_position or not ads_competitor_position:
         return None
 
-    if ads_position < ads_competitor_position:
-        return None
-
-    return dict_items.get(f"{ads_competitor_position}").get("price") + 1
+    if ads_competitor_position:
+        return dict_items.get(f"{ads_competitor_position}").get("price") + 1
 
 
 def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, item: dict) -> Union[None, float, int]:
     """Получение цены за позицию"""
-
+    competitor = None
     if item.get("competitor_id"):
+        logger.bind(abs_id=abs_id).info(item.get("competitor_id"))
         competitor = control_competitors(abs_id=abs_id, dict_items=dict_items, competitor_id=item.get("competitor_id"))
-        if competitor:
-            return competitor
-
-    # competitor = control_competitors(abs_id=abs_id, dict_items=dict_items)
-    # if competitor:
-    #     subcategories_link = "https://www.farpost.ru/" + item.get("attr")
-    #     message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> в режиме обгона конкурента в категории<a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
-    #     send_telegram_message(chat_id=chat_id, message=message)
-    #     return competitor
 
     position_item = dict_items.get(f"{position}")
     position_item_last = dict_items.get(f"{position+1}")
 
-    if position_item is None and position_item_last is None:
-        return 10
+    price_up = None
+
+    if not position_item and not position_item_last:
+        price_up = 10.0
 
     if position_item and int(position_item.get("abs_id")) == abs_id:
         if position_item_last:
-            return position_item_last.get("price") + 1
+            price_up = position_item_last.get("price") + 1
         else:
-            logger.info(position_item_last)
-            return None
+            logger.bind(abs_id=abs_id).info(position_item_last)
+            price_up = None
 
     if position_item and int(position_item.get("abs_id")) != abs_id:
         position_now = find_item_number(dict_items, abs_id)
@@ -136,14 +127,22 @@ def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, i
             if item.get("is_up"):
                 subcategories_link = "https://www.farpost.ru/" + item.get("attr")
                 message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
-                logger.debug(f"{abs_id} | {position_now} | {position}")
+                logger.bind(abs_id=abs_id).debug(f"{position_now} | {position}")
                 send_telegram_message(chat_id=chat_id, message=message)
                 requests.get(UrlsEnums.stop_tracking.value + item.get("abs_active_id"))
 
-        return position_item.get("price") + 1
+        price_up = position_item.get("price") + 1
 
-    if position_item is None:
-        return 10
+    if not position_item:
+        price_up = 10
+
+    if not competitor:
+        return price_up
+    else:
+        if price_up > competitor:
+            return price_up
+        else:
+            return competitor
 
 
 def up_abs(
@@ -157,17 +156,15 @@ def up_abs(
     if price_req != price:
         while True:
             i += 1
-            logger.info(f"Обьявление пытаеться подняться | {abs_id}")
             try:
                 requests.get(
                     f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
                     cookies=cookies,
                 )
                 result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
-                item_top = html.fromstring(result.text)
-                text = item_top.xpath("//strong/text()")
-                top = int(re.findall(r"\d+", text[0])[0])
-                if top == position:
+                price_req_text = html.fromstring(result.text)
+                price_req = float(price_req_text.xpath('//*[(@id = "stickPrice")]/@value')[0])
+                if price_req == price:
                     break
                 else:
                     requests.get(
@@ -178,14 +175,14 @@ def up_abs(
                 pass
 
             if i > 20:
-                logger.info(f"Обьявление не смогло подняться | {abs_id}")
+                logger.bind(abs_id=abs_id).info(f"Обьявление не смогло подняться")
                 break
 
         subcategories_link = "https://www.farpost.ru/" + item.get("attr")
         message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> поднялось до {position}-й позиции в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a> цена поднятия : {price}"""
         send_telegram_message(chat_id=chat_id, message=message)
 
-        logger.info(f"Объявление : {abs_id} | Цена поднятия : {price} | Позиция сейчас : {top}")
+        logger.bind(abs_id=abs_id).info(f"Цена поднятия : {price}")
 
 
 def get_html_user_cookies(items):
@@ -224,7 +221,7 @@ def load_item(items):
     tree: html.HtmlElement = html.fromstring(html_code)
     title: str = tree.xpath("/html/head/title/text()")
 
-    logger.error("Название раздела для сбора : " + ",".join(title))
+    logger.bind(abs_id=items.get("abs_id")).error("Название раздела для сбора : " + ",".join(title))
 
     price_up = check_position(
         items.get("position"),
@@ -233,7 +230,7 @@ def load_item(items):
         chat_id,
         items,
     )
-
+    logger.bind(abs_id=items.get("abs_id")).debug(price_up)
     if price_up and price_up < items.get("price_limitation"):
         if price_up < requests.get(UrlsEnums.get_wallet_user.value + user.get("login")).json().get("wallet"):
             up_abs(
@@ -264,7 +261,6 @@ def load_item(items):
 def run_item(items):
     datetime_now = datetime.now()
     time_now = dt_time(hour=datetime_now.hour, minute=datetime_now.minute)
-    logger.error(items["all_time"])
     if not items["all_time"]:
         load_item(items)
     elif (
@@ -320,4 +316,4 @@ if is_api_available(UrlsEnums.get_active_data_close_none.value):
     while True:
         checking_position()
 else:
-    logger.error("API недоступно.")
+    pass
