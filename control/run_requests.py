@@ -103,7 +103,7 @@ def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, i
     """Получение цены за позицию"""
     competitor = None
     if item.get("competitor_id"):
-        logger.bind(abs_id=abs_id).info(item.get("competitor_id"))
+        logger.bind(abs_id=abs_id).bind(login=item.get('user_id')).info(item.get("competitor_id"))
         competitor = control_competitors(abs_id=abs_id, dict_items=dict_items, competitor_id=item.get("competitor_id"))
 
     position_item = dict_items.get(f"{position}")
@@ -118,7 +118,7 @@ def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, i
         if position_item_last:
             price_up = position_item_last.get("price") + 1
         else:
-            logger.bind(abs_id=abs_id).info(position_item_last)
+            logger.bind(abs_id=abs_id).bind(login=item.get('user_id')).info(position_item_last)
             price_up = None
 
     if position_item and int(position_item.get("abs_id")) != abs_id:
@@ -127,7 +127,7 @@ def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, i
             if item.get("is_up"):
                 subcategories_link = "https://www.farpost.ru/" + item.get("attr")
                 message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> снизилось с {position}-й до {position_now}-й позиции  в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a>"""
-                logger.bind(abs_id=abs_id).debug(f"{position_now} | {position}")
+                logger.bind(abs_id=abs_id).bind(login=item.get('user_id')).debug(f"{position_now} | {position}")
                 send_telegram_message(chat_id=chat_id, message=message)
                 requests.get(UrlsEnums.stop_tracking.value + item.get("abs_active_id"))
 
@@ -182,7 +182,7 @@ def up_abs(
         message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> поднялось до {position}-й позиции в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a> цена поднятия : {price}"""
         send_telegram_message(chat_id=chat_id, message=message)
 
-        logger.bind(abs_id=abs_id).info(f"Цена поднятия : {price}")
+        logger.bind(abs_id=abs_id).bind(login=item.get('user_id')).info(f"Цена поднятия : {price}")
 
 
 def get_html_user_cookies(items):
@@ -221,7 +221,7 @@ def load_item(items):
     tree: html.HtmlElement = html.fromstring(html_code)
     title: str = tree.xpath("/html/head/title/text()")
 
-    logger.bind(abs_id=items.get("abs_id")).error("Название раздела для сбора : " + ",".join(title))
+    logger.bind(abs_id=items.get("abs_id")).bind(login=items.get('user_id')).error("Название раздела для сбора : " + ",".join(title))
 
     price_up = check_position(
         items.get("position"),
@@ -230,7 +230,7 @@ def load_item(items):
         chat_id,
         items,
     )
-    logger.bind(abs_id=items.get("abs_id")).debug(price_up)
+    logger.bind(abs_id=items.get("abs_id")).bind(login=items.get('user_id')).debug(price_up)
     if price_up and price_up < items.get("price_limitation"):
         if price_up < requests.get(UrlsEnums.get_wallet_user.value + user.get("login")).json().get("wallet"):
             up_abs(
@@ -294,6 +294,7 @@ def checking_position():
             "all_time": i["all_time"],
             "is_up": i["is_up"],
             "competitor_id": i["competitor_id"],
+            "user_id" : i['user_id'],
         }
         for i in requests.get(url=UrlsEnums.get_active_data_close_none.value).json()
     ]

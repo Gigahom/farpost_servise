@@ -2,14 +2,15 @@ import os
 
 def custom_sink(message):
     var_name = message.record["extra"].get("abs_id", "default")
+    login = message.record["extra"].get("login", "default")
     level = message.record["level"].name
     # Здесь можно использовать любую логику для определения пути на основе сообщения или его уровня
     if level == "ERROR":
-        directory = f"logs/{var_name}/errors"
+        directory = f"logs/{login}/{var_name}/errors"
     elif level == "INFO":
-        directory = f"logs/{var_name}/info"
+        directory = f"logs/{login}/{var_name}/info"
     else:
-        directory = f"logs/{var_name}/other"
+        directory = f"logs/{login}/{var_name}/other"
     
     if not os.path.exists(directory):
         os.makedirs(directory)
