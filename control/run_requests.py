@@ -3,7 +3,7 @@ from loguru import logger
 import requests
 from lxml import html
 import time
-import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Union
 from uuid import UUID
 import re
@@ -261,9 +261,28 @@ def load_item(items):
             requests.get(UrlsEnums.stop_tracking.value + items.get("abs_active_id"))
 
 
-def checking_position() -> None:
-    """Основной цикл"""
+def run_item(items):
+    datetime_now = datetime.now()
+    time_now = dt_time(hour=datetime_now.hour, minute=datetime_now.minute)
+    logger.error(items["all_time"])
+    if not items["all_time"]:
+        load_item(items)
+    elif (
+        dt_time.fromisoformat(items.get("start_time")) < time_now
+        and dt_time.fromisoformat(items.get("end_time")) > time_now
+    ):
+        load_item(items)
+    else:
+        user = requests.get(UrlsEnums.get_user_with_abs_active.value + items["abs_active_id"]).json()
+        cookies = requests.get(UrlsEnums.get_cookies_with_user.value + user.get("login")).json()
+        abs_id = items.get("abs_id")
+        requests.get(
+            f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+            cookies=cookies,
+        )
 
+
+def checking_position():
     list_items_parse: list[dict] = [
         {
             "abs_id": i["abs_id"],
@@ -283,25 +302,18 @@ def checking_position() -> None:
         for i in requests.get(url=UrlsEnums.get_active_data_close_none.value).json()
     ]
 
-    for items in list_items_parse:
-        datetime_now = datetime.now()
-        time_now = dt_time(hour=datetime_now.hour, minute=datetime_now.minute)
-        logger.error(items["all_time"])
-        if not items["all_time"]:
-            load_item(items)
-        elif (
-            dt_time.fromisoformat(items.get("start_time")) < time_now
-            and dt_time.fromisoformat(items.get("end_time")) > time_now
-        ):
-            load_item(items)
-        else:
-            user = requests.get(UrlsEnums.get_user_with_abs_active.value + items["abs_active_id"]).json()
-            cookies = requests.get(UrlsEnums.get_cookies_with_user.value + user.get("login")).json()
-            abs_id = items.get("abs_id")
-            requests.get(
-                f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
-                cookies=cookies,
-            )
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Создание списка будущих выполнений
+        futures = [executor.submit(run_item, item) for item in list_items_parse]
+
+        # Ожидание завершения всех задач и обработка результатов по мере их выполнения
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                # Обработка результата
+            except Exception as e:
+                # Обработка исключения
+                print(f"Произошла ошибка: {e}")
 
 
 if is_api_available(UrlsEnums.get_active_data_close_none.value):
