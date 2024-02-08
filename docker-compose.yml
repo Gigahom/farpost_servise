@@ -43,7 +43,7 @@ services:
 
   control:
     build:
-      context: ./control
+      context: ./control/control
       dockerfile: Dockerfile
     volumes:
       - ./control:/app

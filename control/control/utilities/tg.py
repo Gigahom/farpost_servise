@@ -2,6 +2,7 @@ from requests import post
 
 from utilities.const import TG_API_KEY, TG_API_KEY_2
 
+
 def send_telegram_message(chat_id: int, message: str):
     """
     Отправляет сообщение пользователю в Telegram.

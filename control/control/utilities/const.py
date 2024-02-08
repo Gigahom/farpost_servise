@@ -9,6 +9,7 @@ TG_API_KEY_2 = environ.get("TG_API_KEY_2")
 
 PREF_FARPOST = "/api/v1/farpost"
 
+
 class UrlsEnums(Enum):
     get_active_data_close_none = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/get_active_data_close_none"
     update_cookies = f"http://{API_HOST}:{API_PORT}{PREF_FARPOST}/update_cookies"

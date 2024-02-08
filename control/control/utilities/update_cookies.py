@@ -1,15 +1,19 @@
 from apscheduler.schedulers.background import BackgroundScheduler
+from loguru import logger
 
 from requests import get
 import importlib
 
 from utilities.const import UrlsEnums
+from utilities.logs import custom_sink
+
+logger.add(custom_sink, format="{time} | {message}")
+
 
 scheduler = BackgroundScheduler(timezone="Asia/Vladivostok")
 
 
 def prompt() -> None:
-    logger = importlib.import_module("main.logger")
     get(UrlsEnums.update_cookies.value)
     logger.info("Куки обновлены для всех пользователей")
 

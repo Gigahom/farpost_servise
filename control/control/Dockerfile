@@ -19,5 +19,7 @@ RUN poetry config virtualenvs.create false \
 # Copy all other files
 COPY . /app
 
+WORKDIR /app/control
+
 # Command to run the application
 CMD ["python", "run_requests.py"]
