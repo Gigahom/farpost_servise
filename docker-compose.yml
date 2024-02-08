@@ -30,6 +30,7 @@ services:
       - ./frontend:/app
     depends_on:
       - api
+      - control-api
 
   db:
     image: postgres:15
@@ -53,6 +54,21 @@ services:
       - TG_API_KEY=${TG_API_KEY}
     depends_on:
       - api
+
+  control-api:
+    build:
+      context: ./control/api
+      dockerfile: Dockerfile
+    volumes:
+      - ./control:/app
+    environment:
+      - API_HOST=${API_HOST}
+      - API_PORT=${API_PORT}
+    ports:
+      - "4000:4000"
+    depends_on:
+      - api
+      - control
 
   nginx:
     build:

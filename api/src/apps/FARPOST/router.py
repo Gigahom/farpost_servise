@@ -61,6 +61,12 @@ tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
     },
 ]
 
+@router.get("/get_user_id", tags=["Система контроля"], summary="ID пользователя")
+async def get_user_id(login:str) -> str:
+    async with get_async_session() as session:
+        result = await session.execute(select(User).where(User.login == login))
+        user_id = result.scalars().first().user_id
+        return str(user_id)
 
 @router.get("/get_top_one", tags=["Система контроля"], summary="Цена за первую позицию")
 async def get_top_one(category_attribute: str, login: str) -> PriceTopOneSchema:
