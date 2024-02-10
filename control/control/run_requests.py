@@ -125,10 +125,19 @@ def load_item(item: AbsActive) -> None:
                 item,
             )
         else:
-            logger.bind(abs_id=item.get("abs_id")).bind(login=item.get("user_id")).bind(file_name="cashback").debug("Не хватает средст")
-            requests.get(
-                f"https://www.farpost.ru/bulletin/service-configure?ids={item.get('abs_id')}&applier=unStickBulletin&auto_apply=1",
-                cookies=cookies,
+            # logger.bind(abs_id=item.get("abs_id")).bind(login=item.get("user_id")).bind(file_name="cashback").debug("Не хватает средст")
+            # requests.get(
+            #     f"https://www.farpost.ru/bulletin/service-configure?ids={item.get('abs_id')}&applier=unStickBulletin&auto_apply=1",
+            #     cookies=cookies,
+            # )
+            up_abs(
+                item.get("abs_id"),
+                price_up,
+                item.get("abs_active_id"),
+                item.get("position"),
+                cookies,
+                chat_id,
+                item,
             )
     elif price_up is None:
         pass
