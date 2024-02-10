@@ -17,4 +17,4 @@ def control_competitors(abs_id: int, dict_items: dict, competitor_id: int) -> No
         return None
 
     if ads_competitor_position:
-        return dict_items.get(f"{ads_competitor_position}").get("price") + 1
+        return dict_items.get(f"{ads_competitor_position}").get("price") + 12

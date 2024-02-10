@@ -61,12 +61,14 @@ tags_metadata_farpost: list[dict[str, Union[str, dict[str, str]]]] = [
     },
 ]
 
+
 @router.get("/get_user_id", tags=["Система контроля"], summary="ID пользователя")
-async def get_user_id(login:str) -> str:
+async def get_user_id(login: str) -> str:
     async with get_async_session() as session:
         result = await session.execute(select(User).where(User.login == login))
         user_id = result.scalars().first().user_id
         return str(user_id)
+
 
 @router.get("/get_top_one", tags=["Система контроля"], summary="Цена за первую позицию")
 async def get_top_one(category_attribute: str, login: str) -> PriceTopOneSchema:
@@ -96,11 +98,8 @@ async def get_top_one(category_attribute: str, login: str) -> PriceTopOneSchema:
             headers2["Referer"] = "https://www.farpost.ru/verify?r=1&u=%2Fsign%3Freturn%3D%252F"
             session.get("https://www.farpost.ru/set/sentinel", params=params2, headers=headers2)
 
-            html_code = session.get(
-                f"https://www.farpost.ru/" + category_attribute,
-                cookies=data
-            ).text
-            
+            html_code = session.get(f"https://www.farpost.ru/" + category_attribute, cookies=data).text
+
             html_parce = html.fromstring(html_code)
 
             list_item_price: list[float] = [
@@ -116,7 +115,7 @@ async def get_top_one(category_attribute: str, login: str) -> PriceTopOneSchema:
                     price = list_item_price[0]
             else:
                 price = 10
-            
+
             return PriceTopOneSchema(price=price)
         else:
             raise HTTPException(status_code=404, detail="User not found")
@@ -309,7 +308,7 @@ async def get_active_data_close_none() -> List[AbsActiveMergeSchema]:
                 end_time=i[15],
                 all_time=i[16],
                 is_up=i[17],
-                competitor_id=i[18]
+                competitor_id=i[18],
             )
             for i in data
         ]
@@ -395,7 +394,7 @@ async def get_abs_active_by_user(user_login: str) -> List[AbsActiveMergeSchema]:
                     end_time=i[15],
                     all_time=i[16],
                     is_up=i[17],
-                    competitor_id=i[18]
+                    competitor_id=i[18],
                 )
                 for i in data
             ]
@@ -465,7 +464,7 @@ async def get_abs_active_by_user_none(user_login: str) -> List[AbsActiveMergeSch
                     end_time=i[15],
                     all_time=i[16],
                     is_up=i[17],
-                    competitor_id=i[18]
+                    competitor_id=i[18],
                 )
                 for i in data
             ]
@@ -484,7 +483,7 @@ async def creact_abs_active(
     end_time: time,
     all_time: bool,
     is_up: bool,
-    competitor_id: int = None
+    competitor_id: int = None,
 ) -> AbsActiveSchema:
     """
     Создание новой записи для отслеживания
@@ -515,7 +514,7 @@ async def creact_abs_active(
                     end_time=end_time,
                     all_time=all_time,
                     is_up=is_up,
-                    competitor_id=competitor_id
+                    competitor_id=competitor_id,
                 )
                 await async_add_data(AbsActive, new_abs_active)
                 return new_abs_active
@@ -689,11 +688,7 @@ def auth(login: str = Form(...), password: str = Form(...)) -> ResponseLoginSche
         connection_type="wifi",
     )
     driver.get(ConstUrl.URL_SING.value)
-    try:
-        is_checked = reCaptchaV2(driver=driver, play=False)
-    except:
-        pass
-    print(driver.page_source)
+
     tree_csrf: html.HtmlElement = html.fromstring(driver.page_source)
     cookies = {}
     for i in driver.get_cookies():

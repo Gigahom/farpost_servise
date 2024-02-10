@@ -33,32 +33,35 @@ def up_abs(
     price_req = float(price_req_text.xpath('//*[(@id = "stickPrice")]/@value')[0])
     if price_req != price:
         now = datetime.now()
-        while True:
-            i += 1
-            try:
-                requests.get(
-                    f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
-                    cookies=cookies,
-                )
-                result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
-                price_req_text = html.fromstring(result.text)
-                price_req = float(price_req_text.xpath('//*[(@id = "stickPrice")]/@value')[0])
-                if price_req == price:
-                    break
-                else:
-                    # requests.get(
-                    #     f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
-                    #     cookies=cookies,
-                    # )
-                    pass
-            except:
+        # while True:
+        #     i += 1
+        try:
+            response = requests.get(
+                f"https://www.farpost.ru/bulletin/service-configure?auto_apply=1&stickPrice={price}&return_to=&ids={abs_id}&applier=stickBulletin&stick_position%5B{abs_id}%5D=1&already_applied=1",
+                cookies=cookies,
+            )
+            logger.bind(abs_id=item.get("abs_id")).bind(login=item.get("user_id")).bind(
+                file_name="response_up"
+            ).debug(f'{response.text} | {response.cookies} | {response.headers}')
+            result = requests.get(f"https://www.farpost.ru/bulletin/{abs_id}/newstick?ajax=1", cookies=cookies)
+            price_req_text = html.fromstring(result.text)
+            price_req = float(price_req_text.xpath('//*[(@id = "stickPrice")]/@value')[0])
+            if price_req == price:
                 pass
+            else:
+                # requests.get(
+                #     f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                #     cookies=cookies,
+                # )
+                pass
+        except:
+            pass
 
-            if i > 20:
-                logger.bind(abs_id=item.get("abs_id")).bind(login=item.get("user_id")).bind(
-                    file_name="error_up"
-                ).error("Объявление не смогло подняться за 20 запросов")
-                break
+            # if i > 20:
+            #     logger.bind(abs_id=item.get("abs_id")).bind(login=item.get("user_id")).bind(
+            #         file_name="error_up"
+            #     ).error("Объявление не смогло подняться за 20 запросов")
+            #     break
 
         subcategories_link = "https://www.farpost.ru/" + item.get("attr")
         message = f"""Приклеенное объявление <a href='{item.get("link")}'>{item.get("name_farpost")}</a> поднялось до {position}-й позиции в разделе <a href='{subcategories_link}'>{item.get("subcategories")}</a> цена поднятия : {price}"""
@@ -113,6 +116,7 @@ def load_item(item: AbsActive) -> None:
         chat_id,
         item,
     )
+    logger.bind(abs_id=item.get("abs_id")).bind(login=item.get("user_id")).bind(file_name="price").debug(str(price_up))
 
     if price_up and price_up < item.get("price_limitation"):
         if price_up < requests.get(UrlsEnums.get_wallet_user.value + user.get("login")).json().get("wallet"):

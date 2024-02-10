@@ -28,7 +28,7 @@ def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, i
 
     if position_item and int(position_item.get("abs_id")) == abs_id:
         if position_item_last:
-            price_up = position_item_last.get("price") + 1
+            price_up = position_item_last.get("price") + 21
         else:
             price_up = None
 
@@ -45,7 +45,7 @@ def check_position(position: int, dict_items: dict, abs_id: int, chat_id: int, i
                 send_telegram_message(chat_id=chat_id, message=message)
                 get(UrlsEnums.stop_tracking.value + item.get("abs_active_id"))
 
-        price_up = position_item.get("price") + 1
+        price_up = position_item.get("price") + 21
 
     if not position_item:
         price_up = 10
