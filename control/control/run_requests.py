@@ -162,13 +162,14 @@ def run_item(item: AbsActive) -> None:
     ):
         load_item(item)
     else:
-        user = requests.get(UrlsEnums.get_user_with_abs_active.value + item["abs_active_id"]).json()
-        cookies = requests.get(UrlsEnums.get_cookies_with_user.value + user.get("login")).json()
-        abs_id = item.get("abs_id")
-        requests.get(
-            f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
-            cookies=cookies,
-        )
+        # user = requests.get(UrlsEnums.get_user_with_abs_active.value + item["abs_active_id"]).json()
+        # cookies = requests.get(UrlsEnums.get_cookies_with_user.value + user.get("login")).json()
+        # abs_id = item.get("abs_id")
+        # requests.get(
+        #     f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+        #     cookies=cookies,
+        # )
+        pass
 
     logger.bind(abs_id=item.get("abs_id")).bind(login=item.get("user_id")).bind(file_name="time_reaction").debug(
         datetime.now() - datetime_now
