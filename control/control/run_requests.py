@@ -46,10 +46,11 @@ def up_abs(
                 if price_req == price:
                     break
                 else:
-                    requests.get(
-                        f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
-                        cookies=cookies,
-                    )
+                    # requests.get(
+                    #     f"https://www.farpost.ru/bulletin/service-configure?ids={abs_id}&applier=unStickBulletin&auto_apply=1",
+                    #     cookies=cookies,
+                    # )
+                    pass
             except:
                 pass
 
